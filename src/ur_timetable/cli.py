@@ -5,7 +5,8 @@
     ur-timetable demo SOURCE       local HTML week calendar
     ur-timetable ics SOURCE --groups 2=1,3=2 [--album N] [--optional "Język niemiecki"]
     ur-timetable validate SOURCE   validation report (stage 5)
-    ur-timetable update [--only ID] [--approve]   check ur.edu.pl, publish new versions to data/published/
+    ur-timetable update [--programme P] [--only ID] [--approve] [--republish]
+                                   check ur.edu.pl, publish new versions to data/published/
 
 SOURCE is a timetable PDF or a folder containing exactly one PDF (and optionally the groups DOCX).
 """
@@ -162,9 +163,9 @@ def main(argv: list[str] | None = None) -> int:
     t = parse_timetable(args.source)
 
     if args.command == "validate":
-        report = validate(t)
-        print(report.text())
-        return 0 if report.ok else 1
+        checks = validate(t)
+        print(checks.text())
+        return 0 if checks.ok else 1
     if args.command == "parse":
         JsonStore(args.out).save(t)
         print(report(t))

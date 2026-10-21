@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import hashlib
 import html
+import importlib.metadata
 import re
 import urllib.error
 import urllib.parse
@@ -24,7 +25,11 @@ from pathlib import Path
 
 # Identifies the job to the university's server, with the project's contact address.
 CONTACT_EMAIL = "plan.zajec.nieoficialny@gmail.com"
-USER_AGENT = "ur-timetable/0.4 (unofficial student timetable; https://bylge.github.io/ur_timetable/" + (
+try:
+    _VERSION = importlib.metadata.version("ur-timetable")
+except importlib.metadata.PackageNotFoundError:  # running from a source tree without installing
+    _VERSION = "dev"
+USER_AGENT = f"ur-timetable/{_VERSION} (unofficial student timetable; https://bylge.github.io/ur_timetable/" + (
     f"; {CONTACT_EMAIL})" if CONTACT_EMAIL else ")"
 )
 TIMEOUT = 60

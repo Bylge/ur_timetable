@@ -3,6 +3,21 @@
 Versions follow [Semantic Versioning](https://semver.org/) (see web/README.md, "Versions");
 the format follows [Keep a Changelog](https://keepachangelog.com/). 0.x = demo: anything may still change.
 
+## [0.4.2] - 2026-10-22
+
+### Fixed
+- `ur-timetable parse` crashed (a local variable shadowed the report function).
+- A failed or held timetable is downloaded and processed again on the next check even if its PDF didn't change
+  (so a parser fix or `--approve` takes effect), and so is a timetable whose config was switched to `publish: true`.
+- Titles of cells that matched no subject are PDF text: names are removed from them too; skipped subjects are
+  also left out of `unresolved`.
+- Coming back to the app: if the new plan couldn't be downloaded, the old one stays on screen (it was dropped).
+- The red status says "the last check failed" unless there really is a new PDF that couldn't be published.
+- Texts: the `.ics` re-import note (moved classes keep their old entry), what's stored where (the plan and groups
+  are also in the address), the version line without a build date (it was the date of the last check).
+- Service worker cache renamed so installed apps fetch the new icons.
+- User-Agent carries the real version.
+
 ## [0.4.1] - 2026-10-21
 
 ### Added

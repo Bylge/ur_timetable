@@ -23,7 +23,7 @@ Source files aren't committed (they're public on the UR website; decided 2026-10
 
 Source URL pattern:
 `https://www.ur.edu.pl/files/user_directory/300/Dietetyka/Rozkłady zajęć/Studia I stopnia/<file>.pdf`.
-The filename contains a version date, so a new version is likely to be a new URL.
+The filename contains a date, and a new version is a new URL (confirmed: the old URL then returns 404). The date in the filename isn't the update date, so versions are identified by the file's SHA-256, never by the name.
 
 ## PDF properties
 
@@ -96,7 +96,7 @@ four narrow cells in atomic columns 1 and 2, in two colours (two lecturers). How
 ## Cell text
 
 - Type markers: `(w)`/`(W)` lecture, `(ćw)` class, `(k)`/`(K)` konwersatorium, `(L)` laboratory. Often there's no marker at all.
-- Names are often truncated: `Podstawy..`, `Zasady i organizacja…`, `Żyw. a mikrob. jel. czł.`. Matching them to legend names needs an alias step.
+- Names are often truncated: `Podstawy..`, `Zasady i organizacja…`, `Żyw. a mikrob. jel. czł.`. There is no alias table: `match_subject` tries the exact normalised name, then the abbreviation in parentheses, then a prefix match, with the cell colour as a tie-break. Forms like `Żyw. a mikrob. jel. czł.` stay unmatched (the event keeps the PDF text as its title).
 - Room is usually on the second line, sometimes on the same line (`Dieta a płodność (w) A2.235`). Room values seen: `MS Teams`, `ul.Kasprowicza1`, `A1.MAŁA AULA`, `CSM.212a`, `E7.3` vs `E7.033`.
 - Explicit times (**rule: cell text overrides the grid; a missing start or end comes from the grid**):
   `(8:30)`, `(13:00)Jakość…`, `(11:30)`, `16:15 spotkanie…`, `(14:15 do 17:45)`, `(do 10;45)`, `(do12:15)`, `(DO 16:00)`.
@@ -140,7 +140,7 @@ correction logged as a warning. Week numbers and the title year aren't reliable,
 
 A student profile is a set of choices, not just numbers:
 - one group per partition present in the timetable (`2`, `3`, `4`, `5`, `ZP`, …)
-- optional subjects: German in I st r1 (a switch); elective modules in I st r2 (`Moduł 3`) and II st r2 (`Moduł 2`), both "student wybiera 5 z 6 przedmiotów", with one subject marked `przedmiot nie wybrany` (not offered)
+- optional subjects: German in I st r1 (an optional subject; left out of the website for now via `skipped_subjects`, 2026-10-21); elective modules in I st r2 (`Moduł 3`) and II st r2 (`Moduł 2`), both "student wybiera 5 z 6 przedmiotów", with one subject marked `przedmiot nie wybrany` (not offered)
 
 ## Findings from the parser (stages 1–3, 2026-10-09)
 
@@ -154,7 +154,7 @@ Year 1 (I st ST r1), from `ur-timetable inspect`: 80 day blocks, all with 16 row
 - **Wychowanie fizyczne spans all 4 columns** (I said 3 of 4 earlier; that was a misreading).
 - On Thursdays, German (`Język niemiecki`) covers columns 3–4, while English group 2 covers 3–5.
 - Chemia / Biochemia: Wednesdays usually show 4 of the 5 groups; the remaining group has the class on Thursday in a single column.
-- **18.11 (Wed): possible duplicate in the source.** Biochemia D3.242 appears in columns 4 *and* 5 at 08:45, and Chemia D3.137 in columns 4 *and* 5 at 11:00 (two groups, same room, same time). Needs a validation rule; don't fix silently.
+- **18.11 (Wed): possible duplicate in the source.** Biochemia D3.242 appears in columns 4 *and* 5 at 08:45, and Chemia D3.137 in columns 4 *and* 5 at 11:00 (two groups, same room, same time). Answered (2026-10-12): the groups are combined; shown as printed, no rule.
 - Explicit times found in cells: `(8:30)` (WF), `(12:00)`, `(12:15)`, `(13:00)`, `(13:45)`, `(17:00)`, `16:15`, `(14:15 do 17:45)`.
 - Header notes found: `godziny rektorskie 8:00-14:00 -zajęcia odwołane` (1.10), `Spotkanie organizacyjne 16:15` (05.10; also repeated in the cell).
 
@@ -168,13 +168,13 @@ Other timetables (not priority):
 
 Year 1: 274 events (34 lectures, 238 classes, 2 other), 3 dropped (1.10 rector's hours), 1 error.
 
-- **Error (not published): 10.12 (Thu), Anatomia człowieka ćw in column 5.** Anatomia has 4 groups,
+- **Was an error (now resolved, see below): 10.12 (Thu), Anatomia człowieka ćw in column 5.** Anatomia has 4 groups,
   Thursday has 5 columns and no 4-group header row. Columns 1–4 map to groups 1–4 by the column rule,
-  but column 5 can't. On 03.12 Anatomia is in columns 1 and 3, on 10.12 in columns 5 and 2. **OPEN: which group is in column 5 on 10.12?**
+  but column 5 can't. On 03.12 Anatomia is in columns 1 and 3, on 10.12 in columns 5 and 2. **Resolved (2026-10-12) by a manual override:** column 5 = group 4 (the maintainer's judgement, "probably"), in `data/config/dietetyka/I-st_ST_rok-1.json`, logged as a warning on the event.
 - **Legend colours don't always match the grid:** Genetyka is `#00b050` in the legend and `#70ad47` in the grid;
   Biochemia classes are `#bdd7ee` in the legend and `#ccecff` in the grid. So colour is only a cross-check (warning).
 - Chemia and Biochemia share one colour for all lecturers, so the colour can't identify the lecturer for those.
-- Hours check (by hand, to automate in stage 5): each Chemia/Biochemia group has 10 sessions × 3 h = 30 h = legend ĆW/LAB.
+- Hours check (automated in stage 5, `validate.hours_report`: reported when a subject/group is off by more than 2 h and 10%): each Chemia/Biochemia group has 10 sessions × 3 h = 30 h = legend ĆW/LAB.
 - 05.10: "16:15 spotkanie organizacyjne" has no end time; it ends at 17:00, where the next event in the same cell
   (Anatomia lecture) starts. **Working rule, logged as a warning; not confirmed by the maintainer.**
 - Two non-class events (not matched to a subject): the organizational meeting (05.10) and the mandatory training (29.10, 13:45, A2.46).

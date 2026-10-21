@@ -3,7 +3,7 @@
 
 import type { ChangeSet, ClassEvent, IndexEntry, Mark, Selection, Timetable } from "./types";
 import { changeItems, type ChangeItem } from "./changes";
-import { BUILD_DATE, VERSION } from "./version";
+import { VERSION } from "./version";
 import type { Theme } from "./data";
 import {
   eventsOn,
@@ -114,11 +114,21 @@ function changesBanner(c: PlanContext): string {
     <button class="iconbtn banner-close" data-action="dismiss-changes" aria-label="Ukryj powiadomienie o zmianach">${ICON.close}</button></div>`;
 }
 
+/**
+ * Why the status is red. A new PDF that couldn't be published (pending_sha256 is set) or just a failed
+ * check (e.g. ur.edu.pl didn't answer): in both cases the student sees the last good version.
+ */
+function problemText(entry: IndexEntry): string {
+  return entry.pending_sha256
+    ? "Uczelnia opublikowała nową wersję planu, której nie udało się jeszcze automatycznie przetworzyć. Do czasu poprawki widzisz poprzednią wersję."
+    : "Ostatnie sprawdzenie planu na stronie UR się nie udało. Widzisz ostatnią sprawdzoną wersję.";
+}
+
 export function problemBanner(entry: IndexEntry, tt: Timetable): string {
   const parts: string[] = [];
   if (entry.status === "failed" || entry.status === "needs_review") {
     parts.push(
-      `<div class="banner banner-problem" role="status">Uczelnia opublikowała nową wersję planu, której nie udało się jeszcze automatycznie przetworzyć. Sprawdź <a href="${esc(entry.url)}" target="_blank" rel="noopener">PDF na stronie UR</a>.</div>`,
+      `<div class="banner banner-problem" role="status">${esc(problemText(entry))} Sprawdź <a href="${esc(entry.url)}" target="_blank" rel="noopener">PDF na stronie UR</a>.</div>`,
     );
   }
   if (tt.unresolved.length) {
@@ -198,7 +208,7 @@ export function groupsView(tt: Timetable, draft: Selection, count: number, canGo
           complete ? `${zajecia(count)} w semestrze` : `Wybierz grupę: ${missing.map((p) => `podział na ${p}`).join(", ")}`
         }</p>
         <button class="primary" data-action="save-groups" ${complete ? "" : "disabled"}>Pokaż plan</button>
-        <p class="fine">Plan nieoficjalny, tworzony automatycznie z PDF na stronie Uniwersytetu Rzeszowskiego. W razie wątpliwości obowiązuje PDF. Twój wybór zostaje tylko na tym urządzeniu.</p>
+        <p class="fine">Plan nieoficjalny, tworzony automatycznie z PDF na stronie Uniwersytetu Rzeszowskiego. W razie wątpliwości obowiązuje PDF. Twój wybór zostaje na tym urządzeniu (i w adresie strony, do zakładki).</p>
       </div>
     </main></div>`;
 }
@@ -516,7 +526,7 @@ export function infoSheet(entry: IndexEntry, tt: Timetable, at: Date): string {
     : "";
   const problem =
     s.level === "problem"
-      ? `<div class="info-block problem">Uczelnia opublikowała nową wersję planu, której nie udało się jeszcze automatycznie przetworzyć. Do czasu poprawki widzisz poprzednią wersję — sprawdź PDF.</div>`
+      ? `<div class="info-block problem">${esc(problemText(entry))} W razie wątpliwości sprawdź PDF.</div>`
       : s.level === "stale"
         ? `<div class="info-block warn">Plan nie był sprawdzany od dłuższego czasu. Możliwe, że na stronie UR jest nowsza wersja.</div>`
         : "";
@@ -530,7 +540,7 @@ export function infoSheet(entry: IndexEntry, tt: Timetable, at: Date): string {
        <dt>Aktualizacja planu</dt><dd>${entry.updated ? esc(numericDate(entry.updated)) : "—"} (data podana przez uczelnię)</dd>
        <dt>Sprawdzono</dt><dd>${esc(ago(entry.checked_at, at))}</dd>
      </dl>
-     <p class="fine">Plan jest sprawdzany trzy razy dziennie: rano, po południu i wieczorem. Twoje grupy i ustawienia są zapisane tylko na tym urządzeniu — nic nie jest wysyłane na serwer.</p>
+     <p class="fine">Plan jest sprawdzany trzy razy dziennie: rano, po południu i wieczorem. Twoje grupy, ustawienia, oznaczenia i notatki są zapisane na tym urządzeniu. Wybrany plan i grupy są też w adresie strony (do zakładki); oznaczenia i notatki nie są nigdzie wysyłane.</p>
      <div class="linkrow"><button class="link-btn" data-action="page" data-page="about">O projekcie</button>
        <button class="link-btn" data-action="page" data-page="privacy">Prywatność</button></div>
      <p class="fine version">${versionText()}</p>`,
@@ -653,7 +663,7 @@ export function icsSheet(count: number, fileName: string): string {
        <li><strong>Kalendarz Google:</strong> na komputerze <em>Ustawienia → Importuj i eksportuj → Importuj</em>.</li>
        <li><strong>Outlook, Apple:</strong> otwórz plik albo przeciągnij go do kalendarza.</li>
      </ul>
-     <p class="fine">Gdy plan się zmieni, pobierz plik ponownie. Kalendarze, które rozpoznają te same zajęcia, zaktualizują je zamiast dublować.</p>`,
+     <p class="fine">Gdy plan się zmieni, pobierz plik ponownie. Uwaga: ponowny import doda zajęcia przeniesione na nową godzinę, ale nie usunie starych wpisów (przeniesionych albo usuniętych przez uczelnię). Najprościej importować plik do osobnego kalendarza i przed ponownym importem utworzyć ten kalendarz od nowa.</p>`,
   );
 }
 
@@ -734,13 +744,13 @@ export function changesView(changes: ChangeSet[], sel: Selection, tt: Timetable,
   );
 }
 
-/** "Wersja 0.4.0 (demo) z 21.10.2026" */
+/** "Wersja 0.4.1 (demo)". The "demo" label (here, the pill and "O projekcie") goes at 1.0.0. */
 export function versionText(): string {
-  return `Wersja ${esc(VERSION)} (demo)${BUILD_DATE ? ` z ${esc(numericDate(BUILD_DATE))}` : ""}`;
+  return `Wersja ${esc(VERSION)} (demo)`;
 }
 
 const REPO_URL = "https://github.com/Bylge/ur_timetable";
-// The project's contact address (also in src/ur_timetable/fetch.py, for the User-Agent). Empty: no contact
+// The project's contact address (also in src/ur_timetable/fetch.py, for the User-Agent). When empty, the contact
 // section and no "Zgłoś błąd" link yet.
 export const CONTACT_EMAIL = "plan.zajec.nieoficialny@gmail.com";
 

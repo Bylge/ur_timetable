@@ -1,5 +1,6 @@
-// Screens for review at phone and desktop size, with the clock fixed to chosen moments.
-// Screenshots go to docs/screenshots/m3/<project>-<name>.png.
+// Screens for review at phone (Redmi Note 14) and desktop size, with the clock fixed to chosen moments,
+// plus layout and behaviour checks (no sideways scrolling, one-line day header, theme, sheets, first paint,
+// skeleton, offline). Screenshots go to docs/screenshots/m3/<project>-<name>.png.
 
 import { expect, test, type Page } from "@playwright/test";
 
@@ -109,7 +110,7 @@ test("status: not checked for a long time", async ({ page }) => {
   await shot(page, "30-status-stale");
 });
 
-test("status: new PDF couldn't be processed", async ({ page }) => {
+test("status: the last check failed", async ({ page }) => {
   await at(page, "2026-10-14T10:00:00+02:00", { status: "failed" });
   await page.goto(plan());
   await expect(page.locator(".banner-problem")).toBeVisible();

@@ -39,7 +39,7 @@ published: the site keeps the last good one, shows a red status, and an issue is
 | Path | What |
 |---|---|
 | `src/ur_timetable/` | the parser and the update job (Python; module docstrings describe each stage) |
-| `tests/` | parser tests (PDF-based ones are skipped when the source PDF isn't present) |
+| `tests/` | parser and update-job tests; the PDF-based ones use the 02.10.2026 year-1 PDF (no longer on the university site) and are skipped without it |
 | `data/config/` | per-timetable settings: publish switch, optional and skipped subjects, manual overrides |
 | `data/published/` | what the website reads (`index.json`, `<id>/timetable.json`, `<id>/changes.json`) |
 | `web/` | the website: plain TypeScript + Vite, no framework ([web/README.md](web/README.md)) |
@@ -47,8 +47,8 @@ published: the site keeps the last good one, shows a red status, and an issue is
 
 ## Usage
 
-Requires Python 3.12+. Source PDFs aren't included in the repository; download them from the
-university website into `data/sources/<programme>/<folder>/`.
+Requires Python 3.12+ (and Node 22.12+ for the website). Source PDFs aren't included in the repository; download
+them from the university website into `data/sources/<programme>/<folder>/` (`update` downloads what it needs itself).
 
 ```
 python -m venv .venv

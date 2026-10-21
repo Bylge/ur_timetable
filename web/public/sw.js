@@ -5,9 +5,10 @@
 //   deploy therefore shows on the next start after it was downloaded (standard for installed web apps).
 // - Data (data/*.json): network first, so a new version of the plan shows as soon as the phone is online;
 //   the cached copy is used offline or when the network is too slow.
-// - Built assets (assets/*-<hash>.js) and icons: cache first; their names change with every build.
+// - Built assets (assets/*-<hash>.js, names change with every build) and other static files (icons,
+//   manifest, fixed names): cache first. Bump SHELL when an icon or the manifest changes.
 
-const SHELL = "shell-v2";
+const SHELL = "shell-v3"; // v3: new icons (0.4.1)
 const DATA = "data-v1";
 const SLOW_NETWORK_MS = 2500;
 const MAX_ASSETS = 40;
@@ -100,7 +101,7 @@ async function cacheFirst(request) {
   return response;
 }
 
-/** Keep the cache small: old builds' assets go first (oldest entries); never the page or its own assets. */
+/** Keep the cache small: the oldest entries go first, never the page (and, when refreshing it, not its assets). */
 async function trim(cache, keep) {
   const keys = await cache.keys();
   const removable = keys.filter((k) => k.url !== SHELL_URL && !keep.includes(k.url));

@@ -90,7 +90,7 @@ const state = {
   openedOn: "", // "today" when the plan was opened, to follow the date if the app stays open overnight
 };
 
-// The skeleton from index.html, shown until the data is ready (and while loading later).
+// The skeleton from index.html, shown until the data is ready.
 let skeleton = "";
 
 let root: HTMLElement;
@@ -529,7 +529,7 @@ function onClick(ev: MouseEvent): void {
       closeLayer();
       break;
     case "clear-data":
-      if (confirm("Usunąć wybrane grupy, oznaczenia i notatki z tego urządzenia?")) {
+      if (confirm("Usunąć z tego urządzenia wybrane grupy, oznaczenia, notatki i ustawienia?")) {
         clearAllStored();
         location.href = location.pathname;
       }
@@ -615,8 +615,10 @@ async function refresh(): Promise<void> {
     const id = state.selection?.timetable;
     const published = id ? state.index.timetables[id]?.published_sha256 : undefined;
     if (id && published && published !== currentVersion(id)) {
-      state.timetables.delete(id);
-      await timetable(id);
+      // load first, replace after: if the download fails, the plan on screen stays
+      const [tt, changes] = await Promise.all([loadTimetable(id), loadChanges(id)]);
+      state.timetables.set(id, tt);
+      state.changes.set(id, changes);
     }
   } catch {
     // offline: keep what we have

@@ -1,6 +1,6 @@
 /* Plan zajęć UR — phone first. The theme tokens (light; dark following the system unless the student picks a
    theme via data-theme on <html>) and the loading skeleton are in index.html: they're needed for the first
-   paint, before this file arrives (in dev mode it comes with the scripts). */
+   paint. In dev mode this file comes with the scripts; in the build it's inlined into index.html after them. */
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; overflow-x: clip; }
@@ -156,7 +156,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .empty-day { padding: 28px 12px; text-align: center; color: var(--muted); font-weight: 600; }
 .swipe-area { min-height: 40vh; }
 
-/* next classes card (option C) */
+/* next classes card */
 .nextcard {
   background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px 12px;
   margin-bottom: 14px; cursor: pointer; display: grid; gap: 8px; touch-action: pan-x;

@@ -119,7 +119,7 @@ export function relativeDay(iso: string, today: string): string {
   return n > 0 ? `za ${n} dni` : `${-n} dni temu`;
 }
 
-/** Relative time of a past moment: "przed chwilą", "25 min temu", "3 godz. temu", "wczoraj, 14:05", "12.10.2026". */
+/** Relative time of a past moment: "przed chwilą", "25 min temu", "3 godz. temu", "dziś, 14:05", "wczoraj, 14:05", "12.10.2026". */
 export function ago(isoDateTime: string, at: Date = new Date()): string {
   const then = new Date(isoDateTime);
   const minutes = Math.round((at.getTime() - then.getTime()) / 60_000);

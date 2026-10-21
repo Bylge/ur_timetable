@@ -1,8 +1,9 @@
 """The update job: check the university pages, and publish new timetable versions that pass validation.
 
 For each timetable on a programme page:
-    ask for the PDF "if changed since the last check" (ETag / Last-Modified): not modified -> only record the check
-    download the PDF -> same SHA-256 as the published version? -> only record the check
+    ask for the PDF "if changed since the last check" (ETag / Last-Modified); not modified and no local copy ->
+        only record the check (a failed, held or newly enabled timetable is always downloaded, see needs_pdf)
+    same SHA-256 as the published version? -> only record the check
     new version -> parse -> validate -> publish (timetable.json + changes.json) or keep the old one
 
 `index.json` records every check (also when nothing changed), so the site can show "sprawdzono …"
@@ -16,6 +17,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from .changes import change_count, diff_events
+from .config import load_config
 from .fetch import SourceEntry, download, fetch_listing
 from .pipeline import parse_pdf
 from .publish import PUBLISHED_DIR, SourceInfo, published_timetable, read_json, write_json
@@ -109,6 +111,18 @@ def process_entry(
     result.lines.append(f"{entry.id}: published ({summary})\n{report.text()}")
 
 
+def needs_pdf(timetable_id: str, record: dict, approve: bool, republish: bool) -> bool:
+    """Download the PDF even if it didn't change: the last outcome can change without a new file.
+
+    A failed or held version is retried (a parser fix or --approve can publish it), and a timetable whose
+    config was switched to `publish: true` is processed for the first time. Otherwise "not modified" is enough.
+    """
+    status = record.get("status")
+    if republish or approve or status in ("failed", "needs_review"):
+        return True
+    return status == "not_enabled" and load_config(timetable_id).publish
+
+
 def run_update(
     programmes: list[str],
     only: set[str] | None = None,
@@ -137,7 +151,11 @@ def run_update(
                 continue
             try:
                 record = index["timetables"].setdefault(entry.id, {"id": entry.id})
-                dl = download(entry, downloads_dir, None if republish else record.get("download"))
+                dl = download(
+                    entry,
+                    downloads_dir,
+                    None if needs_pdf(entry.id, record, approve, republish) else record.get("download"),
+                )
                 record["download"] = dl.record(entry.url)
                 if dl.path is None:
                     # not modified since the last check, and nothing local to parse: the last outcome still holds

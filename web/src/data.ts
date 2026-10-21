@@ -40,7 +40,7 @@ export async function loadChanges(id: string): Promise<ChangeSet[]> {
   }
 }
 
-/** Timetables a student can pick: published at least once. */
+/** Timetables a student can pick: published at least once and not switched off (not_enabled). */
 export function available(index: IndexFile) {
   return Object.values(index.timetables)
     .filter((t) => t.published_sha256 && t.status !== "not_enabled")
@@ -162,7 +162,7 @@ export function saveTheme(theme: Theme): void {
   }
 }
 
-/** Everything this site keeps in the browser (selection, view, marks, seen versions). */
+/** Everything this site keeps in the browser: every planur:* key (selection, view, theme, marks, seen versions). */
 export function clearAllStored(): void {
   try {
     for (const key of Object.keys(localStorage)) if (key.startsWith("planur:")) localStorage.removeItem(key);

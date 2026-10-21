@@ -14,8 +14,8 @@
 
 `publish` must be true for a timetable to reach the website: passing validation isn't enough, a
 person must have reviewed the parsed result. Every override is logged as a warning on the event.
-`skipped_subjects` are parsed and validated like any other subject but never published (a known
-subject that is deliberately left out for now, with the reason).
+`skipped_subjects` are parsed and validated like any other subject but never published, neither as
+events nor in `unresolved` (a known subject that is deliberately left out for now, with the reason).
 """
 
 from __future__ import annotations

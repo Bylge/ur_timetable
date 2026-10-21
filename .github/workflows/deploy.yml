@@ -2,12 +2,14 @@ name: Deploy site
 
 # Builds web/ (with data/published/) and publishes it on GitHub Pages.
 # Runs after every scheduled update (called from update.yml: its data commit is made with the workflow
-# token, which doesn't trigger push events) and when code is pushed.
+# token, which doesn't trigger push events), and on pushes to main that change web/ (not its .md files),
+# data/published/ or this workflow. Parser-only changes reach the site with the next scheduled update.
 on:
   push:
     branches: [main]
     paths:
       - "web/**"
+      - "!web/**/*.md" # docs only: nothing to redeploy
       - "data/published/**"
       - ".github/workflows/deploy.yml"
   workflow_call:

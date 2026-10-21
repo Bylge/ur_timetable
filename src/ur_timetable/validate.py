@@ -1,8 +1,11 @@
 """Stage 5: checks before a parsed timetable may be published.
 
 Blocking (nothing is published, the site keeps the last good version and shows a warning):
-- the PDF yields no day blocks, a block has no date, or no subject table was found
-- a large change against the previous published version (needs a manual OK)
+- the PDF yields no day blocks, a block has no usable date, or no subject table was found
+- a document-level warning from the parser (e.g. a date that isn't the printed weekday: block skipped)
+
+Needs review (held like a blocking problem until published with --approve):
+- a large change against the previous published version (more than 30% of the events)
 
 Not blocking, but published as a notice (decided 2026-10-14): events the parser couldn't resolve
 (`errors`) are left out of the schedule and listed in `unresolved`, so the site can say

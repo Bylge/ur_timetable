@@ -58,7 +58,7 @@ def public_event(e: Event) -> dict:
         "date": e.date,
         "start": e.start,
         "end": e.end,
-        "title": e.title,
+        "title": e.title if e.subject else without_names(e.title),  # no subject matched: the title is PDF text
         "kind": e.kind,
         "room": e.room,
         "partition": e.partition,
@@ -86,7 +86,7 @@ def published_timetable(t: Timetable, source: SourceInfo, published_at: str) -> 
         "unresolved": [
             {"date": e.date, "start": e.start, "end": e.end, "text": without_names(e.source.get("text", ""))}
             for e in sorted(t.result.events, key=lambda e: (e.date, e.start))
-            if e.errors
+            if e.errors and e.subject not in skipped
         ],
     }
 

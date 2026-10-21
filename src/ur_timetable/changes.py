@@ -1,8 +1,9 @@
 """What changed between two published versions of a timetable.
 
-Events are compared by stable id (date, times, subject, kind, group). Same id with a different room
-or notes = changed in place. A removed and an added event for the same subject, kind and group on
-the same day = moved (new time). Everything else is added or removed.
+Events are compared by stable id (a hash of date, start, end, title, kind, partition and group; see
+interpret.stable_id). Same id with a different room or notes = changed in place. A removed and an added
+event with the same title, kind, partition and group on the same day = moved (new time). Everything
+else is added or removed: a class moved to another day shows as removed + added.
 """
 
 from __future__ import annotations

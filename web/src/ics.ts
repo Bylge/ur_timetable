@@ -1,5 +1,6 @@
 // The student's schedule as an iCalendar file (RFC 5545), built in the browser. Same event UIDs as the
-// Python export (src/ur_timetable/schedule.py), so importing again updates instead of duplicating.
+// Python export (src/ur_timetable/schedule.py): importing again updates a class whose room, notes or mark
+// changed. A class moved to another time has a new id (and UID), so the old entry stays in the calendar.
 
 import type { ClassEvent, Mark } from "./types";
 import { kindLabel } from "./labels";

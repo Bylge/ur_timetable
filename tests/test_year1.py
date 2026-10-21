@@ -1,4 +1,4 @@
-"""Layout detection on the real I st ST year-1 timetable (02.10.2026).
+"""Layout, events, schedule and publishing on the real I st ST year-1 timetable (02.10.2026).
 
 The PDF isn't committed (source files are git-ignored); these tests are skipped when it's missing.
 Expected values were checked by eye against the rendered PDF.
@@ -130,7 +130,7 @@ def test_events_overview(timetable):
         ("2026-10-01", "Język angielski"),
     ]
     assert [e for e in r.events if e.errors] == []
-    # 10.12 Anatomia in column 5 is resolved by the manual override in data/config/I-st_ST_rok-1.json
+    # 10.12 Anatomia in column 5 is resolved by the manual override in data/config/dietetyka/I-st_ST_rok-1.json
     [anatomy] = [e for e in r.events if e.date == "2026-12-10" and e.source["columns"] == [4, 4]]
     assert (anatomy.title, anatomy.partition, anatomy.group) == ("Anatomia człowieka", 4, 4)
     assert any("manual override" in w for w in anatomy.warnings)
@@ -185,3 +185,10 @@ def test_skipped_subject_is_parsed_but_not_published(timetable):
     assert not any(e["title"] == german for e in published["events"])
     assert german not in [s["name"] for s in published["subjects"]]
     assert published["optional_subjects"] == []
+
+
+def test_parse_command(tmp_path):
+    from ur_timetable.cli import main
+
+    assert main(["parse", str(PDF.parent), "--out", str(tmp_path)]) == 0
+    assert (tmp_path / "I-st_ST_rok-1" / "timetable.json").exists() or any(tmp_path.rglob("timetable.json"))

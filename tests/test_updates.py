@@ -1,4 +1,4 @@
-"""Page listing, stable ids, version diffs (no network, no PDF)."""
+"""Page listing, stable ids, version diffs, name removal, the update job without a PDF (no network)."""
 
 from ur_timetable.changes import change_count, diff_events
 from ur_timetable.fetch import parse_listing
@@ -125,6 +125,31 @@ def test_not_modified_pdf_only_records_the_check(tmp_path, monkeypatch):
     result = update.run_update(["dietetyka"], published_dir=tmp_path, downloads_dir=tmp_path / "dl")
     saved = __import__("json").loads((tmp_path / "index.json").read_text(encoding="utf-8"))
     assert asked[0] == known  # the previous download is passed on, so the request is conditional
+    assert asked[1] is None  # a failed timetable is downloaded again (a parser fix or --approve may publish it)
     assert saved["timetables"][entry.id]["status"] == "ok"
     assert saved["timetables"][entry.id]["checked_at"] == saved["checked_at"]
     assert result.published == [] and result.failed == ["dietetyka/I-st_ST_rok-2"]  # a known problem is still reported
+
+
+def test_unmatched_title_loses_names():
+    from ur_timetable.publish import public_event
+
+    raw = "Seminarium dyplomowe dr Jan Kowalski MS Teams"
+    unmatched = Event("x", "2026-10-01", "08:00", "09:30", raw, None, "class", None, None, None, None, None, "#ffffff")
+    assert public_event(unmatched)["title"] == "Seminarium dyplomowe MS Teams"
+    matched = Event(
+        "y", "2026-10-01", "08:00", "09:30", "Chemia", "Chemia", "class", None, None, None, None, None, "#ffffff"
+    )
+    assert public_event(matched)["title"] == "Chemia"
+
+
+def test_needs_pdf():
+    from ur_timetable.update import needs_pdf
+
+    assert not needs_pdf("x/y", {"status": "ok"}, approve=False, republish=False)
+    assert needs_pdf("x/y", {"status": "ok"}, approve=True, republish=False)
+    assert needs_pdf("x/y", {"status": "needs_review"}, approve=False, republish=False)
+    assert not needs_pdf("dietetyka/none", {"status": "not_enabled"}, approve=False, republish=False)  # no config
+    assert needs_pdf(
+        "dietetyka/I-st_ST_rok-1", {"status": "not_enabled"}, approve=False, republish=False
+    )  # publish: true
