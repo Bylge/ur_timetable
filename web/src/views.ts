@@ -742,7 +742,7 @@ export function versionText(): string {
 const REPO_URL = "https://github.com/Bylge/ur_timetable";
 // The project's contact address (also in src/ur_timetable/fetch.py, for the User-Agent). Empty: no contact
 // section and no "Zgłoś błąd" link yet.
-export const CONTACT_EMAIL = "";
+export const CONTACT_EMAIL = "plan.zajec.nieoficialny@gmail.com";
 
 export function aboutView(sourceUrl: string | null): string {
   const pdf = sourceUrl ? ` (<a href="${esc(sourceUrl)}" target="_blank" rel="noopener">otwórz PDF</a>)` : "";
@@ -797,7 +797,8 @@ export function privacyView(): string {
      <h2>Hosting</h2>
      <p>Strona jest hostowana na GitHub Pages. Jak każdy serwer, GitHub może zapisywać w logach dane techniczne połączeń (np. adres IP) w celach bezpieczeństwa — zobacz <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">politykę prywatności GitHub</a>.</p>
      <h2>Uczelnia</h2>
-     <p>Plany pobiera ze strony ur.edu.pl automat, nie Twoja przeglądarka, więc uczelnia nie dostaje informacji o tym, że korzystasz z tej strony (chyba że otworzysz link do PDF).</p>`,
+     <p>Plany pobiera ze strony ur.edu.pl automat, nie Twoja przeglądarka, więc uczelnia nie dostaje informacji o tym, że korzystasz z tej strony (chyba że otworzysz link do PDF).</p>
+     ${CONTACT_EMAIL ? `<h2>Kontakt</h2><p>Pytania, poprawki albo prośby o usunięcie danych: <a href="mailto:${esc(CONTACT_EMAIL)}">${esc(CONTACT_EMAIL)}</a>.</p>` : ""}`,
   );
 }
 

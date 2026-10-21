@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ur-timetable"
-version = "0.4.0"
+version = "0.4.1"
 description = "Parse University of Rzeszów timetable PDFs into structured schedule data"
 requires-python = ">=3.12"
 license = "MIT"

@@ -22,8 +22,8 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
-# Identifies the job to the university's server. Add the contact address once it exists (CONTACT_EMAIL).
-CONTACT_EMAIL = ""
+# Identifies the job to the university's server, with the project's contact address.
+CONTACT_EMAIL = "plan.zajec.nieoficialny@gmail.com"
 USER_AGENT = "ur-timetable/0.4 (unofficial student timetable; https://bylge.github.io/ur_timetable/" + (
     f"; {CONTACT_EMAIL})" if CONTACT_EMAIL else ")"
 )

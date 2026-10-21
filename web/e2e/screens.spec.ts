@@ -197,6 +197,8 @@ test("menu, calendar file, info pages", async ({ page }) => {
   const phone = test.info().project.name === "phone";
   if (phone) {
     await page.getByRole("button", { name: "Menu" }).click();
+    const report = page.getByRole("link", { name: /Zgłoś błąd lub uwagę/ });
+    await expect(report).toHaveAttribute("href", /^mailto:plan\.zajec\.nieoficialny@gmail\.com\?subject=.*Grupy%3A%201%2F2/);
     await shot(page, "60-menu");
   }
   await page.getByRole("button", { name: /Dodaj do kalendarza/ }).click();
