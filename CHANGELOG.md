@@ -3,6 +3,12 @@
 Versions follow [Semantic Versioning](https://semver.org/) (see web/README.md, "Versions");
 the format follows [Keep a Changelog](https://keepachangelog.com/). 0.x = demo: anything may still change.
 
+## [Unreleased]
+
+### Fixed
+- App icon: the drawing filled only ~40% of the icon in Android's round and squircle masks; now larger
+  (still inside the safe zone).
+
 ## [0.4.0] - 2026-10-21
 
 ### Added
