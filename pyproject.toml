@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ur-timetable"
+version = "0.4.0"
+description = "Parse University of Rzeszów timetable PDFs into structured schedule data"
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = [
+    "pdfplumber>=0.11",
+    "pypdfium2>=4",
+    "pillow>=10",
+    "python-docx>=1.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[project.scripts]
+ur-timetable = "ur_timetable.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+# embedded HTML/JS template
+"src/ur_timetable/demo.py" = ["E501"]

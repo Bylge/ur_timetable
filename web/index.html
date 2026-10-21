@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Plan zajęć UR · nieoficjalny</title>
+    <meta name="description" content="Nieoficjalny plan zajęć Uniwersytetu Rzeszowskiego: wybierz swoje grupy i zobacz tylko swoje zajęcia. Tworzony automatycznie z planów PDF publikowanych przez uczelnię." />
+    <meta name="theme-color" content="#f5f6f8" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Plan UR" />
+    <style>
+      /* First paint: theme tokens and the skeleton (the rest of the CSS is in src/styles.css). */
+      :root {
+        --bg: #f5f6f8;
+        --surface: #ffffff;
+        --surface-2: #eef0f3;
+        --text: #15181d;
+        --muted: #5f6672;
+        --line: #e2e5e9;
+        --line-strong: #cdd2d8;
+        --accent: #2b59d1;
+        --accent-fg: #ffffff;
+        --accent-soft: #e5ecfb;
+        --ok: #1e9e57;
+        --warn: #a8660b;
+        --warn-bg: #fff4e0;
+        --problem: #c4302b;
+        --problem-bg: #fdeceb;
+        --now: #e5484d;
+        --radius: 14px;
+        --radius-s: 9px;
+        --shadow: 0 1px 2px rgb(16 24 40 / 6%), 0 2px 6px rgb(16 24 40 / 6%);
+        --shadow-l: 0 8px 30px rgb(16 24 40 / 18%);
+        --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        color-scheme: light;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #0f1115;
+          --surface: #171a20;
+          --surface-2: #20242c;
+          --text: #e8ebf0;
+          --muted: #9ba3af;
+          --line: #262b33;
+          --line-strong: #353b45;
+          --accent: #7d9dff;
+          --accent-fg: #0d1018;
+          --accent-soft: #1d2640;
+          --ok: #3ccf7f;
+          --warn: #f0b252;
+          --warn-bg: #33270f;
+          --problem: #ff7a72;
+          --problem-bg: #3a1716;
+          --shadow: 0 1px 2px rgb(0 0 0 / 40%);
+          --shadow-l: 0 10px 40px rgb(0 0 0 / 55%);
+          color-scheme: dark;
+        }
+      }
+
+      /* the same dark tokens when the student picks "Ciemny" */
+      :root[data-theme="dark"] {
+        --bg: #0f1115;
+        --surface: #171a20;
+        --surface-2: #20242c;
+        --text: #e8ebf0;
+        --muted: #9ba3af;
+        --line: #262b33;
+        --line-strong: #353b45;
+        --accent: #7d9dff;
+        --accent-fg: #0d1018;
+        --accent-soft: #1d2640;
+        --ok: #3ccf7f;
+        --warn: #f0b252;
+        --warn-bg: #33270f;
+        --problem: #ff7a72;
+        --problem-bg: #3a1716;
+        --shadow: 0 1px 2px rgb(0 0 0 / 40%);
+        --shadow-l: 0 10px 40px rgb(0 0 0 / 55%);
+        color-scheme: dark;
+      }
+      html { background: var(--bg); }
+      body { margin: 0; background: var(--bg); }
+      /* skeleton: shown until the data is ready */
+      .skel { min-height: 100dvh; display: flex; }
+      .sk-side { display: none; }
+      .sk-main { flex: 1; padding: 14px 14px 0; display: grid; align-content: start; gap: 12px; max-width: 560px; }
+      .skel i { display: block; border-radius: 10px; background: var(--surface-2); }
+      .sk-row { display: flex; justify-content: space-between; gap: 12px; }
+      .sk-row i { height: 26px; }
+      .sk-tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding: 4px 30px 8px; border-bottom: 1px solid var(--line); }
+      .sk-tabs i { height: 40px; }
+      .skel .sk-line { height: 22px; margin-top: 4px; }
+      .skel .sk-block { border-left: 4px solid var(--line-strong); }
+      .skel i { animation: shimmer 1.2s ease-in-out infinite alternate; }
+      @keyframes shimmer { from { opacity: 1; } to { opacity: .45; } }
+      @media (prefers-reduced-motion: reduce) { .skel i { animation: none; } }
+      @media (min-width: 900px) {
+        .sk-side { display: block; width: 300px; flex: none; background: var(--surface); border-right: 1px solid var(--line); }
+        .sk-main { padding: 22px 32px; max-width: none; }
+        .sk-tabs { display: none; }
+      }
+    </style>
+    <script>
+      // Before the first paint: the student's theme (no flash of the wrong colours), and the data downloads,
+      // so they run while the app's script is still on its way (picked up in src/data.ts).
+      (function () {
+        try {
+          var theme = localStorage.getItem("planur:theme:v1");
+          if (theme === "light" || theme === "dark") {
+            document.documentElement.dataset.theme = theme;
+            var bg = theme === "dark" ? "#0f1115" : "#f5f6f8";
+            document.querySelectorAll('meta[name="theme-color"]').forEach(function (m) { m.content = bg; });
+          }
+        } catch (e) {}
+        try {
+          var get = function (path) {
+            var p = fetch(path, { cache: "no-cache" });
+            p.catch(function () {});
+            return p;
+          };
+          var early = { "data/index.json": get("data/index.json") };
+          var id = new URLSearchParams(location.search).get("t");
+          if (!id) {
+            var saved = JSON.parse(localStorage.getItem("planur:selection:v1") || "null");
+            id = saved && saved.timetable;
+          }
+          if (id && /^[\w-]+\/[\w-]+$/.test(id)) {
+            early["data/" + id + "/timetable.json"] = get("data/" + id + "/timetable.json");
+            early["data/" + id + "/changes.json"] = get("data/" + id + "/changes.json");
+          }
+          window.__early = early;
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="app">
+      <div class="skel" role="status" aria-label="Wczytywanie planu">
+        <div class="sk-side"></div>
+        <div class="sk-main">
+          <div class="sk-row"><i style="width: 52%"></i><i style="width: 34%"></i></div>
+          <div class="sk-tabs"><i></i><i></i><i></i><i></i><i></i></div>
+          <i class="sk-line" style="width: 64%"></i>
+          <i class="sk-block" style="height: 118px"></i>
+          <i class="sk-block" style="height: 86px; width: 88%"></i>
+          <i class="sk-block" style="height: 150px"></i>
+        </div>
+      </div>
+    </div>
+    <noscript>Ta strona wymaga JavaScriptu. Oficjalny plan w PDF znajdziesz na stronie Uniwersytetu Rzeszowskiego.</noscript>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

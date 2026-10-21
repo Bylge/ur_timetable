@@ -1,0 +1,56 @@
+name: Deploy site
+
+# Builds web/ (with data/published/) and publishes it on GitHub Pages.
+# Runs after every scheduled update (called from update.yml: its data commit is made with the workflow
+# token, which doesn't trigger push events) and when code is pushed.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - "data/published/**"
+      - ".github/workflows/deploy.yml"
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main # after an update: the commit with the new data, not the one the run started from
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+        working-directory: web
+      - run: npm test
+        working-directory: web
+      - run: npm run build
+        working-directory: web
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

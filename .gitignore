@@ -1,0 +1,18 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Original university documents (contain student album numbers); kept local
+data/sources/
+
+# Parser output and debug renders
+out/
+*.egg-info/
+.ruff_cache/
+
+# Downloaded PDFs (content-addressed)
+data/downloads/
+
+# Review screenshots (regenerate: cd web && npm run screens)
+docs/screenshots/

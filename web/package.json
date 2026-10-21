@@ -1,0 +1,21 @@
+{
+  "name": "plan-zajec-ur-web",
+  "private": true,
+  "version": "0.4.0",
+  "type": "module",
+  "scripts": {
+    "sync-data": "node scripts/sync-data.mjs",
+    "dev": "npm run sync-data && vite",
+    "dev:phone": "npm run sync-data && vite --host",
+    "build": "npm run sync-data && tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "screens": "npm run sync-data && playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.4"
+  }
+}

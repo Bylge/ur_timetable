@@ -1,0 +1,21 @@
+{
+  "publish": true,
+  "optional_subjects": [
+    "Język niemiecki"
+  ],
+  "skipped_subjects": {
+    "Język niemiecki": "optional subject, left out of the website for now (decision 2026-10-21)"
+  },
+  "group_overrides": [
+    {
+      "date": "2026-12-10",
+      "subject": "Anatomia człowieka",
+      "columns": [
+        5,
+        5
+      ],
+      "group": 4,
+      "reason": "maintainer's judgement (probably group 4), 2026-10-12"
+    }
+  ]
+}

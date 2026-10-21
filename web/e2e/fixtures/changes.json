@@ -1,0 +1,293 @@
+[
+ {
+  "published_at": "2026-10-13T22:24:37+00:00",
+  "updated": "2026-10-13",
+  "sha256": "f3301cdea98301125338327f9df269c911595361f372b4d20f4c94ec3694b9b4",
+  "previous_sha256": "old",
+  "added": [
+   {
+    "id": "563177869409",
+    "date": "2026-11-04",
+    "start": "17:45",
+    "end": "19:15",
+    "title": "Fizjologia człowieka",
+    "kind": "lecture",
+    "room": "A2.46",
+    "partition": null,
+    "group": null,
+    "color": "#bf8f00",
+    "notes": []
+   },
+   {
+    "id": "7ed327c31d2b",
+    "date": "2026-11-25",
+    "start": "17:45",
+    "end": "19:15",
+    "title": "Fizjologia człowieka",
+    "kind": "lecture",
+    "room": "A1.MAŁA AULA",
+    "partition": null,
+    "group": null,
+    "color": "#bf8f00",
+    "notes": []
+   }
+  ],
+  "removed": [
+   {
+    "id": "5d06373b0ef2",
+    "date": "2026-11-05",
+    "start": "12:00",
+    "end": "13:15",
+    "title": "Fizjologia człowieka",
+    "kind": "lecture",
+    "room": "A2.46",
+    "partition": null,
+    "group": null,
+    "color": "#bf8f00",
+    "notes": [
+     "start 12:00 from cell text (grid: 11:45)"
+    ]
+   },
+   {
+    "id": "31a688b00b63",
+    "date": "2026-11-19",
+    "start": "12:15",
+    "end": "14:00",
+    "title": "Fizjologia człowieka",
+    "kind": "lecture",
+    "room": "A1.MAŁA AULA",
+    "partition": null,
+    "group": null,
+    "color": "#bf8f00",
+    "notes": [
+     "start 12:15 from cell text (grid: 12:30)"
+    ]
+   }
+  ],
+  "changed": [
+   {
+    "before": {
+     "id": "7ce048cecff6",
+     "date": "2026-10-19",
+     "start": "08:00",
+     "end": "09:30",
+     "title": "Podstawy opieki nad chorym",
+     "kind": "lecture",
+     "room": "G4.-101",
+     "partition": null,
+     "group": null,
+     "color": "#ff66cc",
+     "notes": []
+    },
+    "after": {
+     "id": "7ce048cecff6",
+     "date": "2026-10-19",
+     "start": "08:00",
+     "end": "09:30",
+     "title": "Podstawy opieki nad chorym",
+     "kind": "lecture",
+     "room": "G4.-104",
+     "partition": null,
+     "group": null,
+     "color": "#ff66cc",
+     "notes": []
+    },
+    "fields": [
+     "room"
+    ]
+   },
+   {
+    "before": {
+     "id": "c0a61789f3ef",
+     "date": "2026-11-05",
+     "start": "14:00",
+     "end": "16:15",
+     "title": "Chemia żywności",
+     "kind": "class",
+     "room": "D3.137",
+     "partition": 5,
+     "group": 5,
+     "color": "#ffcccc",
+     "notes": []
+    },
+    "after": {
+     "id": "51200f2e672d",
+     "date": "2026-11-05",
+     "start": "11:45",
+     "end": "14:00",
+     "title": "Chemia żywności",
+     "kind": "class",
+     "room": "D3.137",
+     "partition": 5,
+     "group": 5,
+     "color": "#ffcccc",
+     "notes": []
+    },
+    "fields": [
+     "start",
+     "end"
+    ]
+   },
+   {
+    "before": {
+     "id": "29223bda4f80",
+     "date": "2026-11-05",
+     "start": "16:15",
+     "end": "18:30",
+     "title": "Biochemia ogólna i żywności",
+     "kind": "class",
+     "room": "D3.242",
+     "partition": 5,
+     "group": 5,
+     "color": "#ccecff",
+     "notes": []
+    },
+    "after": {
+     "id": "e2728680b3ba",
+     "date": "2026-11-05",
+     "start": "14:00",
+     "end": "16:15",
+     "title": "Biochemia ogólna i żywności",
+     "kind": "class",
+     "room": "D3.242",
+     "partition": 5,
+     "group": 5,
+     "color": "#ccecff",
+     "notes": []
+    },
+    "fields": [
+     "start",
+     "end"
+    ]
+   },
+   {
+    "before": {
+     "id": "de531b8b60fa",
+     "date": "2026-11-19",
+     "start": "10:15",
+     "end": "11:45",
+     "title": "Język angielski",
+     "kind": "class",
+     "room": "A2.208",
+     "partition": 2,
+     "group": 1,
+     "color": "#ffff00",
+     "notes": []
+    },
+    "after": {
+     "id": "a6f591cb28d3",
+     "date": "2026-11-19",
+     "start": "08:45",
+     "end": "10:15",
+     "title": "Język angielski",
+     "kind": "class",
+     "room": "A2.208",
+     "partition": 2,
+     "group": 1,
+     "color": "#ffff00",
+     "notes": []
+    },
+    "fields": [
+     "start",
+     "end"
+    ]
+   },
+   {
+    "before": {
+     "id": "192646bfb837",
+     "date": "2026-11-19",
+     "start": "08:45",
+     "end": "10:15",
+     "title": "Język angielski",
+     "kind": "class",
+     "room": "A2.208",
+     "partition": 2,
+     "group": 2,
+     "color": "#ffff00",
+     "notes": []
+    },
+    "after": {
+     "id": "4ca09e31b1de",
+     "date": "2026-11-19",
+     "start": "10:15",
+     "end": "11:45",
+     "title": "Język angielski",
+     "kind": "class",
+     "room": "A2.208",
+     "partition": 2,
+     "group": 2,
+     "color": "#ffff00",
+     "notes": []
+    },
+    "fields": [
+     "start",
+     "end"
+    ]
+   },
+   {
+    "before": {
+     "id": "3dfc729404b7",
+     "date": "2026-11-19",
+     "start": "17:00",
+     "end": "19:15",
+     "title": "Biochemia ogólna i żywności",
+     "kind": "class",
+     "room": "D3.242",
+     "partition": 5,
+     "group": 1,
+     "color": "#ccecff",
+     "notes": []
+    },
+    "after": {
+     "id": "bb7b770f727e",
+     "date": "2026-11-19",
+     "start": "11:45",
+     "end": "14:00",
+     "title": "Biochemia ogólna i żywności",
+     "kind": "class",
+     "room": "D3.242",
+     "partition": 5,
+     "group": 1,
+     "color": "#ccecff",
+     "notes": []
+    },
+    "fields": [
+     "start",
+     "end"
+    ]
+   },
+   {
+    "before": {
+     "id": "92b3468c4837",
+     "date": "2026-11-19",
+     "start": "14:45",
+     "end": "17:00",
+     "title": "Chemia żywności",
+     "kind": "class",
+     "room": "D3.137",
+     "partition": 5,
+     "group": 1,
+     "color": "#ffcccc",
+     "notes": []
+    },
+    "after": {
+     "id": "d26c7d039ccc",
+     "date": "2026-11-19",
+     "start": "14:00",
+     "end": "16:15",
+     "title": "Chemia żywności",
+     "kind": "class",
+     "room": "D3.137",
+     "partition": 5,
+     "group": 1,
+     "color": "#ffcccc",
+     "notes": []
+    },
+    "fields": [
+     "start",
+     "end"
+    ]
+   }
+  ]
+ }
+]
