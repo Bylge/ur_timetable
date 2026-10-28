@@ -6,7 +6,7 @@
    "label": "Dietetyka, studia I stopnia stacjonarne, rok 1",
    "url": "https://www.ur.edu.pl/files/user_directory/300/Dietetyka/Rozk%C5%82ady%20zaj%C4%99%C4%87/Studia%20I%20stopnia/Dietetyka%201%20rok%20I%20st%20ST%20%2813.10.2026%29.pdf",
    "updated": "2026-10-13",
-   "checked_at": "2026-10-28T10:30:02+00:00",
+   "checked_at": "2026-10-28T17:19:39+00:00",
    "status": "ok",
    "message": null,
    "pending_sha256": null,
@@ -25,7 +25,7 @@
    "label": "Dietetyka, studia I stopnia stacjonarne, rok 2",
    "url": "https://www.ur.edu.pl/files/user_directory/300/Dietetyka/Rozk%C5%82ady%20zaj%C4%99%C4%87/Studia%20I%20stopnia/Dietetyka%202%20rok%20I%20st%20ST%20%2828.10.2026%29.pdf",
    "updated": "2026-10-28",
-   "checked_at": "2026-10-28T10:30:02+00:00",
+   "checked_at": "2026-10-28T17:19:39+00:00",
    "status": "not_enabled",
    "pending_sha256": "5b72edfcdb9134827b8d65b7b121c3f3b71e93a3b9d8dee1fe3051506a2dd737",
    "message": "not reviewed yet (publish: false)",
@@ -39,17 +39,17 @@
   "dietetyka/I-st_ST_rok-3": {
    "id": "dietetyka/I-st_ST_rok-3",
    "label": "Dietetyka, studia I stopnia stacjonarne, rok 3",
-   "url": "https://www.ur.edu.pl/files/user_directory/300/Dietetyka/Rozk%C5%82ady%20zaj%C4%99%C4%87/Studia%20I%20stopnia/Dietetyka%203%20rok%20I%20st%20ST%20%2829.09.2026%29.pdf",
-   "updated": "2026-10-01",
-   "checked_at": "2026-10-28T10:30:02+00:00",
+   "url": "https://www.ur.edu.pl/files/user_directory/300/Dietetyka/Rozk%C5%82ady%20zaj%C4%99%C4%87/Studia%20I%20stopnia/Dietetyka%203%20rok%20I%20st%20ST%20%2828.07.2026%29.pdf",
+   "updated": "2026-10-28",
+   "checked_at": "2026-10-28T17:19:39+00:00",
    "status": "not_enabled",
-   "pending_sha256": "1bd936f4e1164c7770f3c1abf6be171cf3c3d99e1edc10418c2c70b969a5adef",
+   "pending_sha256": "494a9639d0ab618013647daa0c4071d1855fd7109bdfd71d5700926ef8eea7a8",
    "message": "not reviewed yet (publish: false)",
    "download": {
-    "url": "https://www.ur.edu.pl/files/user_directory/300/Dietetyka/Rozk%C5%82ady%20zaj%C4%99%C4%87/Studia%20I%20stopnia/Dietetyka%203%20rok%20I%20st%20ST%20%2829.09.2026%29.pdf",
-    "sha256": "1bd936f4e1164c7770f3c1abf6be171cf3c3d99e1edc10418c2c70b969a5adef",
-    "etag": "\"6abb7f6e-9d9bf\"",
-    "last_modified": "Tue, 29 Sep 2026 09:05:50 GMT"
+    "url": "https://www.ur.edu.pl/files/user_directory/300/Dietetyka/Rozk%C5%82ady%20zaj%C4%99%C4%87/Studia%20I%20stopnia/Dietetyka%203%20rok%20I%20st%20ST%20%2828.07.2026%29.pdf",
+    "sha256": "494a9639d0ab618013647daa0c4071d1855fd7109bdfd71d5700926ef8eea7a8",
+    "etag": "\"6ae1f742-9d6ad\"",
+    "last_modified": "Wed, 28 Oct 2026 13:23:14 GMT"
    }
   },
   "dietetyka/I-st_NST_rok-1": {
@@ -57,7 +57,7 @@
    "label": "Dietetyka, studia I stopnia niestacjonarne, rok 1",
    "url": "https://www.ur.edu.pl/files/user_directory/300/Dietetyka/Rozk%C5%82ady%20zaj%C4%99%C4%87/Studia%20I%20stopnia/Dietetyka%201%20rok%20I%20st%20NST%20%2802.10.2026%29.pdf",
    "updated": "2026-10-10",
-   "checked_at": "2026-10-28T10:30:02+00:00",
+   "checked_at": "2026-10-28T17:19:39+00:00",
    "status": "not_enabled",
    "pending_sha256": "d3653c8085e97622449891508138120e74af14f8efda8aaa36b0f8fa940476d8",
    "message": "not reviewed yet (publish: false)",
@@ -73,7 +73,7 @@
    "label": "Dietetyka, studia I stopnia niestacjonarne, rok 2",
    "url": "https://www.ur.edu.pl/files/user_directory/300/Dietetyka/Rozk%C5%82ady%20zaj%C4%99%C4%87/Studia%20I%20stopnia/Dietetyka%202%20rok%20I%20st%20NST%20%2816.10.2026%29.pdf",
    "updated": "2026-10-16",
-   "checked_at": "2026-10-28T10:30:02+00:00",
+   "checked_at": "2026-10-28T17:19:39+00:00",
    "status": "not_enabled",
    "pending_sha256": "3934a8bb1fff1a62464548ed8cf790f3ae31bf66f9ace5f7d479a5930b48938c",
    "message": "not reviewed yet (publish: false)",
@@ -89,7 +89,7 @@
    "label": "Dietetyka, studia I stopnia niestacjonarne, rok 3",
    "url": "https://www.ur.edu.pl/files/user_directory/300/Dietetyka/Rozk%C5%82ady%20zaj%C4%99%C4%87/Studia%20I%20stopnia/Dietetyka%203%20rok%20I%20st%20NST%20%2813.10.2026%29.pdf",
    "updated": "2026-10-13",
-   "checked_at": "2026-10-28T10:30:02+00:00",
+   "checked_at": "2026-10-28T17:19:39+00:00",
    "status": "not_enabled",
    "pending_sha256": "9671603099d2f6cef88a1840a7d46e9e39f6549afddbe110fce9f5cce3671802",
    "message": "not reviewed yet (publish: false)",
@@ -105,7 +105,7 @@
    "label": "Dietetyka, studia II stopnia stacjonarne, rok 1",
    "url": "https://www.ur.edu.pl/files/user_directory/300/Dietetyka/Rozk%C5%82ady%20zaj%C4%99%C4%87/Studia%20II%20stopnia/Dietetyka%201%20rok%20II%20st%20ST%20%2827.10.2029%29.pdf",
    "updated": "2026-10-28",
-   "checked_at": "2026-10-28T10:30:02+00:00",
+   "checked_at": "2026-10-28T17:19:39+00:00",
    "status": "not_enabled",
    "pending_sha256": "ff343dd5c7625914c5ca95fbaf0d827ff00a75f388a0cf2b7e2d5a0dbd2e0065",
    "message": "not reviewed yet (publish: false)",
@@ -121,7 +121,7 @@
    "label": "Dietetyka, studia II stopnia stacjonarne, rok 2",
    "url": "https://www.ur.edu.pl/files/user_directory/300/Dietetyka/Rozk%C5%82ady%20zaj%C4%99%C4%87/Studia%20II%20stopnia/Dietetyka%202%20rok%20II%20st%20ST%2009.10.2026%29.pdf",
    "updated": "2026-10-09",
-   "checked_at": "2026-10-28T10:30:02+00:00",
+   "checked_at": "2026-10-28T17:19:39+00:00",
    "status": "not_enabled",
    "pending_sha256": "b2bfc6bb56fff647eab615954d11760b46ba7ff6bf5eba69f9d3e19a5bdc7216",
    "message": "not reviewed yet (publish: false)",
@@ -137,7 +137,7 @@
    "label": "Dietetyka, studia II stopnia niestacjonarne, rok 1",
    "url": "https://www.ur.edu.pl/files/user_directory/300/Dietetyka/Rozk%C5%82ady%20zaj%C4%99%C4%87/Studia%20II%20stopnia/Dietetyka%201%20rok%20II%20st%20NST%20%2819.10.2026%29.pdf",
    "updated": "2026-10-16",
-   "checked_at": "2026-10-28T10:30:02+00:00",
+   "checked_at": "2026-10-28T17:19:39+00:00",
    "status": "not_enabled",
    "pending_sha256": "e749bd7119da8c7b8085fe2854920de4e2306caf359d439e9ef0faabca0b871c",
    "message": "not reviewed yet (publish: false)",
@@ -153,7 +153,7 @@
    "label": "Dietetyka, studia II stopnia niestacjonarne, rok 2",
    "url": "https://www.ur.edu.pl/files/user_directory/300/Dietetyka/Rozk%C5%82ady%20zaj%C4%99%C4%87/Studia%20II%20stopnia/Dietetyka%202%20rok%20II%20st%20NST%20%2805.10.2026%29.pdf",
    "updated": "2026-10-01",
-   "checked_at": "2026-10-28T10:30:02+00:00",
+   "checked_at": "2026-10-28T17:19:39+00:00",
    "status": "not_enabled",
    "pending_sha256": "8d0a0145adcd095d51f67b61b0ea5011ca7bc5a72aa9153563bd153d3ad8c2e5",
    "message": "not reviewed yet (publish: false)",
@@ -167,10 +167,10 @@
  },
  "pages": {
   "dietetyka": {
-   "checked_at": "2026-10-28T10:30:02+00:00",
+   "checked_at": "2026-10-28T17:19:39+00:00",
    "entries": 10,
    "unmatched_links": []
   }
  },
- "checked_at": "2026-10-28T10:30:02+00:00"
+ "checked_at": "2026-10-28T17:19:39+00:00"
 }
