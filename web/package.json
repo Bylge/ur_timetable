@@ -1,7 +1,7 @@
 {
   "name": "plan-zajec-ur-web",
   "private": true,
-  "version": "0.4.2",
+  "version": "0.5.0",
   "type": "module",
   "scripts": {
     "sync-data": "node scripts/sync-data.mjs",
@@ -14,8 +14,12 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.64.0",
+    "@types/qrcode": "^1.5.5",
     "typescript": "^7.0.2",
     "vite": "^8.3.4",
     "vitest": "^5.0.4"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4"
   }
 }

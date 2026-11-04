@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { attends, holidayOn, myEvents, notesOn, placeDay, selectionComplete, todayState, weekDays, weekStart } from "./schedule";
+import { attends, holidayOn, hourRange, myEvents, notesOn, placeDay, selectionComplete, todayState, validTime, weekDays, weekStart, wfPlanned } from "./schedule";
 import { addDays, ago, longDate, mondayOf, nowInWarsaw, relativeDay, weekRange, weekday } from "./time";
 import type { ClassEvent, Selection, Timetable } from "./types";
 
@@ -106,5 +106,47 @@ describe("schedule", () => {
     expect(weekDays("2026-10-14", false)).toEqual(["2026-10-12", "2026-10-13", "2026-10-14", "2026-10-15", "2026-10-16"]);
     expect(weekStart("2026-10-17", false)).toBe("2026-10-19"); // Saturday shows the coming week
     expect(weekStart("2026-10-17", true)).toBe("2026-10-12"); // ... unless the timetable has weekend classes
+  });
+});
+
+describe("WF at the student's own hour", () => {
+  const wf = (over: Partial<ClassEvent>) =>
+    ev({ title: "Wychowanie fizyczne", start: "08:30", end: "10:15", notes: ["start 08:30 from cell text (grid: 08:45)"], ...over });
+  const tt = {
+    optional_subjects: [],
+    events: [wf({ id: "a", date: "2026-10-06" }), wf({ id: "b", date: "2026-10-13" }), ev({ id: "c", date: "2026-10-13", start: "10:30", end: "12:00" })],
+  } as unknown as Timetable;
+
+  it("finds the PDF's WF time", () => {
+    expect(wfPlanned(tt)).toEqual({ start: "08:30", minutes: 105 });
+    expect(wfPlanned({ events: [ev({})] } as unknown as Timetable)).toBeNull();
+  });
+
+  it("moves every WF class, keeps its length, id and other classes", () => {
+    const mine = myEvents(tt, { ...sel, wf: "11:45" });
+    const moved = mine.filter((e) => e.title === "Wychowanie fizyczne");
+    expect(moved.map((e) => [e.id, e.start, e.end])).toEqual([
+      ["a", "11:45", "13:30"],
+      ["b", "11:45", "13:30"],
+    ]);
+    expect(moved[0].planned).toEqual({ start: "08:30", end: "10:15" });
+    expect(moved[0].notes).toEqual([]); // the PDF-time note no longer applies
+    expect(mine.find((e) => e.id === "c")).toMatchObject({ start: "10:30", end: "12:00" });
+    expect(mine.map((e) => e.id)).toEqual(["a", "c", "b"]); // sorted by the new time
+    expect(tt.events[0].start).toBe("08:30"); // the timetable itself is untouched
+  });
+
+  it("leaves WF as in the PDF without a chosen hour", () => {
+    const a = myEvents(tt, sel).find((e) => e.id === "a")!;
+    expect(a.start).toBe("08:30");
+    expect(a.planned).toBeUndefined();
+  });
+
+  it("widens the time axis for a late WF and checks times", () => {
+    expect(hourRange(myEvents(tt, { ...sel, wf: "19:30" }))).toEqual({ from: 8, to: 22 });
+    expect(validTime("07:05")).toBe(true);
+    expect(validTime("7:05")).toBe(false);
+    expect(validTime("24:00")).toBe(false);
+    expect(validTime(undefined)).toBe(false);
   });
 });

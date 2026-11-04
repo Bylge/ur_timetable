@@ -224,6 +224,70 @@ test("menu, calendar file, info pages", async ({ page }) => {
   await shot(page, "63-privacy");
 });
 
+test("share: QR code, with and without groups", async ({ page }) => {
+  await at(page, "2026-10-14T10:00:00+02:00");
+  await page.goto(plan());
+  if (test.info().project.name === "phone") await page.getByRole("button", { name: "Menu" }).click();
+  await page.getByRole("button", { name: /Udostępnij stronę/ }).click();
+  const dialog = page.getByRole("dialog", { name: "Udostępnij stronę" });
+  await expect(dialog.locator(".qr-code svg")).toBeVisible();
+  await expect(dialog.getByText("bylge.github.io/ur_timetable")).toBeVisible();
+  await shot(page, "66-share");
+  await dialog.getByRole("button", { name: "Z moimi grupami" }).click();
+  await expect(dialog.getByText(/grupy 1\/2 · 1\/3 · 1\/4 · 1\/5/)).toBeVisible();
+  await expect(dialog.locator(".qr-code svg")).toBeVisible();
+  await shot(page, "67-share-groups");
+  const download = page.waitForEvent("download");
+  await dialog.getByRole("button", { name: "Pobierz kod QR" }).click();
+  expect((await download).suggestedFilename()).toBe("plan-zajec-ur-moje-grupy-qr.png");
+});
+
+test("WF at the student's own hour (Tue 13.10, 7:00)", async ({ page }) => {
+  await at(page, "2026-10-13T07:00:00+02:00");
+  await page.goto(plan());
+  const wf = page.locator(".block", { hasText: "Wychow" }).first();
+  await expect(wf).toHaveAttribute("aria-label", /8:30–10:15/);
+  await wf.click();
+  const time = page.locator("#wf-start");
+  await time.fill("11:45");
+  await expect(page.locator(".wf-end")).toHaveText("do 13:30");
+  await expect(page.getByRole("button", { name: /Cofnij/ })).toBeVisible();
+  await shot(page, "68-wf-sheet");
+  await page.keyboard.press("Escape");
+  await expect(wf).toHaveAttribute("aria-label", /11:45–13:30/);
+  await expect(page).toHaveURL(/wf=1145/); // kept after the sheet closed, so a reload or bookmark keeps it
+  await shot(page, "69-wf-moved");
+  await page.reload();
+  await expect(page.locator(".block", { hasText: "Wychow" }).first()).toHaveAttribute("aria-label", /11:45–13:30/);
+  // back to the PDF's hour from the groups screen
+  await page.locator(".selection, .sel-card .secondary").first().click();
+  await expect(page.getByText(/W planie WF jest o 8:30–10:15/)).toBeVisible();
+  await page.getByRole("button", { name: /Cofnij/ }).click();
+  await expect(page.locator("#wf-start")).toHaveValue("08:30");
+  await page.getByRole("button", { name: "Pokaż plan" }).click();
+  await expect(page.locator(".block", { hasText: "Wychow" }).first()).toHaveAttribute("aria-label", /8:30–10:15/);
+  await expect(page).not.toHaveURL(/wf=/);
+});
+
+test.describe("iPhone", () => {
+  // iOS never offers an install prompt: the menu item shows the "Do ekranu początkowego" steps instead.
+  test.use({
+    userAgent:
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Mobile/15E148 Safari/604.1",
+  });
+
+  test("install steps", async ({ page }) => {
+    test.skip(test.info().project.name !== "phone", "phone only");
+    await at(page, "2026-10-14T10:00:00+02:00");
+    await page.goto(plan());
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page.getByRole("button", { name: /Zainstaluj jako aplikację/ }).click();
+    await expect(page.getByRole("dialog", { name: "Zainstaluj jako aplikację" })).toBeVisible();
+    await expect(page.getByText("Do ekranu początkowego")).toBeVisible();
+    await shot(page, "65-ios-install");
+  });
+});
+
 test.describe("dark mode", () => {
   test.use({ colorScheme: "dark" });
   test("weekday and details (Wed 14.10, 10:00)", async ({ page }) => {

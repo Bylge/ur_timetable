@@ -3,6 +3,29 @@
 Versions follow [Semantic Versioning](https://semver.org/) (see web/README.md, "Versions");
 the format follows [Keep a Changelog](https://keepachangelog.com/). 0.x = demo: anything may still change.
 
+## [0.5.0] - 2026-11-04
+
+### Added
+- Own hour for Wychowanie fizyczne: students sign up for a WF slot, so the start time can be set on "Twoje grupy"
+  or by tapping a WF class. Every WF class moves there and keeps its length from the PDF (also in the `.ics`); saved on
+  the device and in the link (`wf=1030`).
+- "Udostępnij stronę": a QR code and the link, either the bare site or with the student's groups set ("Sama strona" /
+  "Z moimi grupami"); "Wyślij link" (the phone's share menu), "Kopiuj link", QR code as PNG. The QR generator
+  (`qrcode`, MIT) loads only when the sheet opens.
+- iPhone/iPad: "Zainstaluj jako aplikację" in the menu (iOS has no install prompt, so it shows the
+  "Do ekranu początkowego" steps; hidden once installed).
+
+### Changed
+- Phone menu: the most used items at the top (Zmiany, Udostępnij, Zmień plan lub grupy, install); calendar file,
+  error report and theme as smaller rows; "Skąd jest ten plan?", "O projekcie" and "Prywatność" as links at the bottom.
+- "O projekcie": the install section is now "Instalacja na telefonie", with clearer steps.
+- "Prywatność": mentions the WF hour (stored on the device and in the link).
+- "O projekcie": new section "Jak powstała ta strona" (the code was written with the help of AI; the plan itself is
+  read by a fixed-rule program, not by AI).
+
+### Fixed
+- "Zgłoś błąd lub uwagę" in the menu was styled as an underlined link.
+
 ## [0.4.2] - 2026-10-22
 
 ### Fixed

@@ -1,6 +1,7 @@
 // Loading published data and remembering the student's choice (only on their device).
 
 import type { ChangeSet, IndexFile, Mark, Selection, Timetable } from "./types";
+import { validTime } from "./schedule";
 
 const STORAGE_KEY = "planur:selection:v1";
 const MARKS_KEY = "planur:marks:v1";
@@ -47,7 +48,7 @@ export function available(index: IndexFile) {
     .sort((a, b) => a.id.localeCompare(b.id));
 }
 
-// The choice can come from the link (?t=...&gr=2:1,3:2&opt=...) so it can be bookmarked or shared,
+// The choice can come from the link (?t=...&gr=2:1,3:2&opt=...&wf=1030) so it can be bookmarked or shared,
 // otherwise from this browser's storage.
 
 function fromUrl(): Selection | null {
@@ -60,13 +61,18 @@ function fromUrl(): Selection | null {
     if (split > 1 && group >= 1 && group <= split) groups[String(split)] = group;
   }
   const optional = (p.get("opt") ?? "").split("|").filter(Boolean);
-  return { timetable, groups, optional };
+  const sel: Selection = { timetable, groups, optional };
+  const wf = (p.get("wf") ?? "").replace(/^(\d\d)(\d\d)$/, "$1:$2");
+  if (validTime(wf)) sel.wf = wf;
+  return sel;
 }
 
 function fromStorage(): Selection | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Selection) : null;
+    const sel = raw ? (JSON.parse(raw) as Selection) : null;
+    if (sel && !validTime(sel.wf)) delete sel.wf;
+    return sel;
   } catch {
     return null;
   }
@@ -82,7 +88,19 @@ export function saveSelection(sel: Selection): void {
   } catch {
     // private mode or storage disabled: the link still carries the choice
   }
-  const p = new URLSearchParams(location.search);
+  syncUrl(sel);
+}
+
+/**
+ * Put the choice in the address bar. Also after a sheet closes: closing goes back to the history entry from
+ * before the sheet, whose address doesn't have a change made in the sheet (the WF hour).
+ */
+export function syncUrl(sel: Selection): void {
+  history.replaceState(history.state, "", `?${selectionParams(sel, new URLSearchParams(location.search))}${location.hash}`);
+}
+
+/** The choice as link parameters (t, gr, opt, wf), set on `p`; used for the address bar and for shared links. */
+export function selectionParams(sel: Selection, p = new URLSearchParams()): URLSearchParams {
   p.set("t", sel.timetable);
   const gr = Object.entries(sel.groups)
     .sort(([a], [b]) => Number(a) - Number(b))
@@ -92,7 +110,9 @@ export function saveSelection(sel: Selection): void {
   else p.delete("gr");
   if (sel.optional.length) p.set("opt", sel.optional.join("|"));
   else p.delete("opt");
-  history.replaceState(history.state, "", `?${p.toString()}${location.hash}`);
+  if (sel.wf) p.set("wf", sel.wf.replace(":", ""));
+  else p.delete("wf");
+  return p;
 }
 
 export function clearSelection(): void {

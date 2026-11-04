@@ -6,8 +6,10 @@ import { changeItems, type ChangeItem } from "./changes";
 import { VERSION } from "./version";
 import type { Theme } from "./data";
 import {
+  endAfter,
   eventsOn,
   holidayOn,
+  isWf,
   notesOn,
   placeDay,
   selectionComplete,
@@ -15,6 +17,7 @@ import {
   todayState,
   weekDays,
   weekStart,
+  wfPlanned,
   type Placed,
 } from "./schedule";
 import {
@@ -54,6 +57,8 @@ const ICON = {
   file: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/></svg>',
   mail: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="M4 7l8 6 8-6"/></svg>',
   theme: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" fill="currentColor"/></svg>',
+  share: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="17.5" cy="5.5" r="2.5"/><circle cx="6.5" cy="12" r="2.5"/><circle cx="17.5" cy="18.5" r="2.5"/><path d="M8.7 10.7l6.6-3.9M8.7 13.3l6.6 3.9"/></svg>',
+  undo: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 9.5h10a5 5 0 0 1 0 10H9M8.5 5.5l-4 4 4 4"/></svg>',
   install: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>',
 };
 
@@ -193,6 +198,12 @@ export function groupsView(tt: Timetable, draft: Selection, count: number, canGo
       }><span class="toggle-track" aria-hidden="true"></span><span>${esc(s)}</span></label>`,
     )
     .join("");
+  const wf = wfPlanned(tt);
+  const wfSection = wf
+    ? `<fieldset class="split"><legend>Wychowanie fizyczne</legend>
+        <p class="split-hint">W planie WF jest o ${esc(shortTime(wf.start))}–${esc(shortTime(endAfter(wf.start, wf.minutes)))}. Jeśli Twoja grupa WF ma inną godzinę, ustaw jej początek: przesuną się wszystkie zajęcia WF w Twoim planie, z tą samą długością.</p>
+        ${wfControl("draft", wf.start, draft.wf, wf.minutes)}</fieldset>`
+    : "";
   const complete = selectionComplete(tt, draft);
   const missing = tt.splits.filter((p) => !draft.groups[String(p)]);
   return `<div class="page">
@@ -203,6 +214,7 @@ export function groupsView(tt: Timetable, draft: Selection, count: number, canGo
       <p class="hint">Wybierz numer swojej grupy w każdym podziale. Zajęcia wspólne dla całego roku pokażą się zawsze.</p>
       ${splits}
       ${optional ? `<fieldset class="split"><legend>Przedmioty do wyboru</legend>${optional}</fieldset>` : ""}
+      ${wfSection}
       <div class="groups-footer">
         <p class="preview" aria-live="polite">${
           complete ? `${zajecia(count)} w semestrze` : `Wybierz grupę: ${missing.map((p) => `podział na ${p}`).join(", ")}`
@@ -482,10 +494,48 @@ export function desktopPlan(c: PlanContext): string {
 
 // ---------- sheets ----------
 
-export function eventSheet(e: ClassEvent, now: Now, mark: Mark | undefined, sourceUrl: string): string {
+/**
+ * The student's own WF start time: a time field, the resulting end, and a way back to the PDF's time.
+ * `target` says what it changes: the draft on the groups screen or the saved choice (class sheet).
+ */
+function wfControl(target: "draft" | "selection", planned: string, own: string | undefined, minutes: number): string {
+  const value = own ?? planned;
+  return `<label class="field-label" for="wf-start">Początek zajęć</label>
+    <div class="wf-row">
+      <input class="field wf-time" id="wf-start" type="time" step="300" value="${esc(value)}" required
+        data-action="wf-start" data-target="${target}" data-planned="${esc(planned)}" data-minutes="${minutes}">
+      <span class="wf-end">do ${esc(shortTime(endAfter(value, minutes)))}</span>
+      <button class="link-btn wf-reset" data-action="wf-reset" data-target="${target}" aria-label="Cofnij do godziny z planu (${esc(shortTime(planned))})" ${own ? "" : "hidden"}>${ICON.undo}Cofnij</button>
+    </div>`;
+}
+
+/** "10:30–12:15 (Twoja godzina; w PDF 8:30–10:15)", or just the times when the class is where the PDF has it. */
+export function hoursText(start: string, end: string, planned?: { start: string; end: string }): string {
+  const time = `${shortTime(start)}–${shortTime(end)}`;
+  return planned ? `${time} (Twoja godzina; w PDF ${shortTime(planned.start)}–${shortTime(planned.end)})` : time;
+}
+
+/** On a WF class: the student's own hour (changes every WF class in their plan). */
+function wfSheetSection(e: ClassEvent, own: string | undefined, plannedStart: string): string {
+  const pdf = e.planned ?? e;
+  const minutes = toMinutes(pdf.end) - toMinutes(pdf.start);
+  return `<section class="wf" aria-labelledby="wf-title">
+      <h3 id="wf-title">Twoja godzina WF</h3>
+      ${wfControl("selection", plannedStart, own, minutes)}
+      <p class="fine">Godzina WF zależy od grupy, na którą się zapiszesz. Zmiana dotyczy wszystkich zajęć WF w Twoim planie (i pliku kalendarza). Widzisz ją tylko Ty.</p>
+    </section>`;
+}
+
+export function eventSheet(
+  e: ClassEvent,
+  now: Now,
+  mark: Mark | undefined,
+  sourceUrl: string,
+  wf: { own: string | undefined; planned: string } | null = null,
+): string {
   const rows: [string, string][] = [
     ["Kiedy", `${longDate(e.date)} (${relativeDay(e.date, now.date).toLowerCase()})`],
-    ["Godziny", `${shortTime(e.start)}–${shortTime(e.end)}`],
+    ["Godziny", hoursText(e.start, e.end, e.planned)],
     ["Rodzaj", kindLabel(e.kind) || "inne"],
     ["Kto", e.partition && e.partition > 1 ? `grupa ${e.group} z ${e.partition}` : "cały rok"],
     ["Sala", e.room ?? "—"],
@@ -495,8 +545,11 @@ export function eventSheet(e: ClassEvent, now: Now, mark: Mark | undefined, sour
     "event",
     e.title,
     `<div class="sheet-swatch" style="--c:${esc(e.color)}"></div>
-     <dl class="facts">${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
+     <dl class="facts">${rows
+       .map(([k, v]) => `<dt>${esc(k)}</dt><dd${k === "Godziny" && isWf(e) ? " data-wf-hours" : ""}>${esc(v)}</dd>`)
+       .join("")}</dl>
      ${e.notes.length ? `<ul class="notes">${e.notes.map((n) => `<li>${esc(noteText(n))}</li>`).join("")}</ul>` : ""}
+     ${wf && isWf(e) ? wfSheetSection(e, wf.own, wf.planned) : ""}
      <section class="mark${cancelled ? " is-cancelled" : ""}" aria-label="Twoje oznaczenie">
        <label class="toggle"><input type="checkbox" data-action="toggle-cancelled" data-id="${esc(e.id)}" ${cancelled ? "checked" : ""}>
          <span class="toggle-track" aria-hidden="true"></span><span class="toggle-text"><strong>Odwołane</strong><span class="toggle-sub">np. prowadzący odwołał zajęcia</span></span></label>
@@ -603,20 +656,75 @@ export function menuItems(c: MenuContext, phone: boolean): string {
     : phone
       ? "Co uczelnia zmieniła w kolejnych wersjach"
       : "";
+  const feedback = CONTACT_EMAIL
+    ? `<a class="menu-item" href="${esc(feedbackHref(c))}"><span class="mi-icon">${ICON.mail}</span>
+        <span class="mi-text"><span class="mi-label">Zgłoś błąd lub uwagę</span></span></a>`
+    : "";
+  const install = c.canInstall ? item("install", ICON.install, "Zainstaluj jako aplikację", phone ? "Ikona na ekranie, działa bez internetu" : "") : "";
+  if (!phone) {
+    return [
+      item("changes", ICON.changes, "Zmiany w planie", changesSub),
+      item("share", ICON.share, "Udostępnij stronę"),
+      item("ics", ICON.calendar, "Dodaj do kalendarza"),
+      install,
+      feedback,
+      item("info", ICON.file, "Skąd jest ten plan?"),
+      item("page", ICON.info, "O projekcie", "", 'data-page="about"'),
+      item("page", ICON.shield, "Prywatność", "", 'data-page="privacy"'),
+      themeRow(c.theme),
+    ].join("");
+  }
+  // Phone: what students use most at the top; the rest smaller, the info pages as links at the bottom.
   return [
     item("changes", ICON.changes, "Zmiany w planie", changesSub),
-    item("ics", ICON.calendar, "Dodaj do kalendarza", phone ? "Plik .ics z Twoimi zajęciami" : ""),
-    phone ? item("groups", ICON.groups, "Zmień plan lub grupy") : "",
-    c.canInstall ? item("install", ICON.install, "Zainstaluj jako aplikację", phone ? "Ikona na ekranie, działa bez internetu" : "") : "",
-    CONTACT_EMAIL
-      ? `<a class="menu-item" href="${esc(feedbackHref(c))}"><span class="mi-icon">${ICON.mail}</span>
-          <span class="mi-text"><span class="mi-label">Zgłoś błąd lub uwagę</span>${phone ? `<span class="mi-sub">E-mail z informacją o Twoim planie i grupach</span>` : ""}</span></a>`
-      : "",
-    item("info", ICON.file, "Skąd jest ten plan?"),
-    item("page", ICON.info, "O projekcie", "", 'data-page="about"'),
-    item("page", ICON.shield, "Prywatność", "", 'data-page="privacy"'),
-    themeRow(c.theme),
+    item("share", ICON.share, "Udostępnij stronę", "Kod QR i link dla znajomych"),
+    item("groups", ICON.groups, "Zmień plan lub grupy", wfPlanned(c.tt) ? "Także godzina WF" : ""),
+    install,
+    `<div class="menu-more">${item("ics", ICON.calendar, "Dodaj do kalendarza (.ics)")}${feedback}${themeRow(c.theme)}</div>`,
+    `<div class="linkrow menu-links">
+       <button class="link-btn" data-action="info">Skąd jest ten plan?</button>
+       <button class="link-btn" data-action="page" data-page="about">O projekcie</button>
+       <button class="link-btn" data-action="page" data-page="privacy">Prywatność</button></div>`,
   ].join("");
+}
+
+/** The public address: shared links always point here, also from localhost or an installed app. */
+export const SITE_URL = "https://bylge.github.io/ur_timetable/";
+
+export interface ShareOptions {
+  withGroups: boolean;
+  url: string; // what the QR code and the buttons share
+  groups: string; // "1/2 · 1/3 · …" (+ WF hour), for the switch's explanation
+  qr: string | null; // the QR code as SVG; null while the generator is loading
+  canShare: boolean; // the system share menu (navigator.share) is available
+}
+
+/**
+ * QR code and link, for telling classmates about the site (searching for it doesn't find it yet). A switch
+ * picks the bare site (everyone picks their own groups) or the site with the student's groups already set.
+ */
+export function shareSheet(o: ShareOptions): string {
+  const shown = o.withGroups ? "Link z Twoimi grupami" : SITE_URL.replace(/^https:\/\//, "").replace(/\/$/, "");
+  const mode = (on: boolean, label: string) =>
+    `<button class="seg-btn${o.withGroups === on ? " on" : ""}" data-action="share-mode" data-groups="${on}" aria-pressed="${o.withGroups === on}">${label}</button>`;
+  return sheet(
+    "share",
+    "Udostępnij stronę",
+    `<div class="seg seg-share" role="group" aria-label="Co udostępnić">${mode(false, "Sama strona")}${mode(true, "Z moimi grupami")}</div>
+     <p class="share-hint">${
+       o.withGroups
+         ? `Otworzy się od razu Twój plan: grupy ${esc(o.groups)}. Dobre dla kogoś z tych samych grup.`
+         : "Każdy wybierze u siebie swój plan i grupy."
+     }</p>
+     <figure class="qr"><div class="qr-code">${
+       o.qr ?? `<span class="qr-wait">Tworzę kod…</span>`
+     }</div><figcaption>${esc(shown)}</figcaption></figure>
+     <div class="sheet-actions">
+       ${o.canShare ? `<button class="primary" data-action="share-link">Wyślij link</button>` : ""}
+       <button class="${o.canShare ? "secondary" : "primary"}" data-action="copy-link">Kopiuj link</button>
+     </div>
+     <p class="fine">Link nigdy nie zawiera Twoich oznaczeń ani notatek. <button class="text-btn" data-action="qr-download">Pobierz kod QR</button> (obrazek PNG, np. do wydruku).</p>`,
+  );
 }
 
 export function menuSheet(c: MenuContext): string {
@@ -664,6 +772,21 @@ export function icsSheet(count: number, fileName: string): string {
        <li><strong>Outlook, Apple:</strong> otwórz plik albo przeciągnij go do kalendarza.</li>
      </ul>
      <p class="fine">Gdy plan się zmieni, pobierz plik ponownie. Uwaga: ponowny import doda zajęcia przeniesione na nową godzinę, ale nie usunie starych wpisów (przeniesionych albo usuniętych przez uczelnię). Najprościej importować plik do osobnego kalendarza i przed ponownym importem utworzyć ten kalendarz od nowa.</p>`,
+  );
+}
+
+/** iOS can't install from the page: the steps in Safari's share menu. */
+export function iosInstallSheet(): string {
+  return sheet(
+    "ios-install",
+    "Zainstaluj jako aplikację",
+    `<p>Na iPhonie aplikację dodaje się z menu Safari:</p>
+     <ol class="steps">
+       <li>Stuknij <strong>Udostępnij</strong> (kwadrat ze strzałką w górę). W nowszych iOS jest w menu <strong>⋯</strong>.</li>
+       <li>Wybierz <em>Do ekranu początkowego</em>.</li>
+       <li>Stuknij <em>Dodaj</em>.</li>
+     </ol>
+     <p class="fine">Ikona „Plan UR” pojawi się na ekranie. Aplikacja nie widzi grup wybranych w Safari, więc po pierwszym uruchomieniu wybierz je jeszcze raz.</p>`,
   );
 }
 
@@ -767,6 +890,8 @@ export function aboutView(sourceUrl: string | null): string {
        <li>Sprawdza wynik. Gdy coś poważnie się nie zgadza, nowa wersja <strong>nie jest</strong> publikowana — strona pokazuje poprzednią z ostrzeżeniem i linkiem do PDF. Pojedyncze zajęcia, których nie da się pewnie odczytać, są pominięte i wypisane w ostrzeżeniu.</li>
        <li>Porównuje wersje i pokazuje, co się zmieniło.</li>
      </ol>
+     <h2>Jak powstała ta strona</h2>
+     <p>Kod strony i programu odczytującego plan został napisany z pomocą AI. Sam plan nie jest odczytywany przez AI: robi to zwykły program według stałych reguł, a wynik jest automatycznie sprawdzany przed publikacją.</p>
      <h2>Czego tu nie ma</h2>
      <ul class="steps">
        <li>Nazwisk prowadzących.</li>
@@ -775,11 +900,11 @@ export function aboutView(sourceUrl: string | null): string {
        <li>Odwołań ogłaszanych poza planem w PDF. Takie zajęcia możesz oznaczyć jako odwołane — kliknij zajęcia i włącz „Odwołane”.</li>
        <li>Planów, które nie zostały jeszcze sprawdzone. Kolejne kierunki i lata będą dodawane.</li>
      </ul>
-     <h2>Jak aplikacja na telefonie</h2>
-     <p>Stronę można dodać do ekranu głównego. Działa wtedy jak aplikacja, także bez internetu (pokazuje ostatnio pobrany plan).</p>
+     <h2>Instalacja na telefonie</h2>
+     <p>Stronę możesz dodać do ekranu telefonu. Otwiera się wtedy jak zwykła aplikacja i działa także bez internetu (pokazuje ostatnio pobrany plan).</p>
      <ul class="steps">
-       <li><strong>Android (Chrome):</strong> menu ⋮ → <em>Zainstaluj aplikację</em> albo <em>Dodaj do ekranu głównego</em>.</li>
-       <li><strong>iPhone (Safari):</strong> przycisk udostępniania → <em>Do ekranu początkowego</em>. Po instalacji może być potrzebny ponowny wybór grup.</li>
+       <li><strong>Android (Chrome):</strong> w menu strony wybierz <em>Zainstaluj jako aplikację</em> albo w menu przeglądarki ⋮ → <em>Zainstaluj aplikację</em>.</li>
+       <li><strong>iPhone (Safari):</strong> <em>Udostępnij</em> (w nowszych iOS w menu ⋯) → <em>Do ekranu początkowego</em> → <em>Dodaj</em>. Zainstalowana aplikacja nie widzi grup wybranych w Safari, więc trzeba je wybrać jeszcze raz.</li>
      </ul>
      <h2>Kontakt</h2>
      <p>${CONTACT_EMAIL ? `Błąd w planie albo pomysł? Napisz: <a href="mailto:${esc(CONTACT_EMAIL)}">${esc(CONTACT_EMAIL)}</a>.` : "Adres kontaktowy pojawi się wkrótce."}</p>
@@ -796,13 +921,13 @@ export function privacyView(): string {
      <h2>Co jest zapisane na Twoim urządzeniu</h2>
      <p>W pamięci przeglądarki (<em>localStorage</em>), tylko po to, żeby strona działała tak, jak ją ustawisz:</p>
      <ul class="steps">
-       <li>wybrany plan i numery grup,</li>
+       <li>wybrany plan, numery grup i Twoja godzina WF (jeśli ją ustawisz),</li>
        <li>widok (dzień albo tydzień) i motyw, jeśli go wybierzesz,</li>
        <li>Twoje oznaczenia „Odwołane” i notatki,</li>
        <li>ostatnio widziana wersja planu (żeby pokazać, co się zmieniło).</li>
      </ul>
      <p>Te dane nie są nigdzie wysyłane. Żeby strona działała bez internetu, przeglądarka przechowuje też kopię strony i planu.</p>
-     <p>Wybrany plan i grupy są również w adresie strony (<code>?t=…&amp;gr=…</code>), żeby można było zapisać zakładkę. Kto dostanie od Ciebie ten link, zobaczy plan dla tych samych grup (bez Twoich oznaczeń i notatek).</p>
+     <p>Wybrany plan, grupy i godzina WF są również w adresie strony (<code>?t=…&amp;gr=…</code>), żeby można było zapisać zakładkę. Kto dostanie od Ciebie ten link (albo kod QR „Z moimi grupami”), zobaczy plan dla tych samych grup (bez Twoich oznaczeń i notatek).</p>
      <button class="secondary danger" data-action="clear-data">Usuń moje dane z tego urządzenia</button>
      <h2>Hosting</h2>
      <p>Strona jest hostowana na GitHub Pages. Jak każdy serwer, GitHub może zapisywać w logach dane techniczne połączeń (np. adres IP) w celach bezpieczeństwa — zobacz <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">politykę prywatności GitHub</a>.</p>

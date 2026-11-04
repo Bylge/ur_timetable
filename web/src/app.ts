@@ -20,13 +20,16 @@ import {
   saveTheme,
   saveSeen,
   saveSelection,
+  selectionParams,
+  syncUrl,
   type Theme,
 } from "./data";
-import { hasWeekendClasses, hourRange, myEvents, selectionComplete, weekStart } from "./schedule";
+import { endAfter, hasWeekendClasses, hourRange, myEvents, selectionComplete, validTime, weekStart, wfPlanned } from "./schedule";
+import { cachedQr, qrPng, qrSvg } from "./qr";
 import { myChangeCount, unseenChanges } from "./changes";
 import { download, icsFileName, toIcs } from "./ics";
 import { groupsSummary, timetableShort } from "./labels";
-import { addDays, nowInWarsaw, weekday, type Now } from "./time";
+import { addDays, nowInWarsaw, shortTime, weekday, type Now } from "./time";
 import {
   aboutView,
   changesView,
@@ -34,14 +37,18 @@ import {
   errorView,
   eventSheet,
   groupsView,
+  hoursText,
   icsConfirmSheet,
   icsSheet,
   infoSheet,
+  iosInstallSheet,
   menuSheet,
   noteText,
   phonePlan,
   pickerView,
   privacyView,
+  shareSheet,
+  SITE_URL,
   type PlanContext,
 } from "./views";
 
@@ -53,6 +60,8 @@ type Sheet =
   | { kind: "menu" }
   | { kind: "ics-confirm" }
   | { kind: "ics"; count: number; file: string }
+  | { kind: "ios-install" }
+  | { kind: "share"; withGroups: boolean }
   | null;
 
 const PAGE_HASH: Record<Page, string> = { changes: "zmiany", about: "o-projekcie", privacy: "prywatnosc" };
@@ -60,6 +69,11 @@ const MODE_KEY = "planur:mode:v1";
 const wide = window.matchMedia("(min-width: 900px)");
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const REFRESH_AFTER_MS = 5 * 60_000; // an app brought back from the background checks for a new version
+
+/** iOS has no install prompt: there the install item explains "Do ekranu początkowego" (iPadOS reports a Mac). */
+const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+const installed =
+  window.matchMedia("(display-mode: standalone)").matches || (navigator as { standalone?: boolean }).standalone === true;
 
 /** Chrome's install prompt, kept until the student asks to install. */
 interface InstallPrompt extends Event {
@@ -193,30 +207,34 @@ function render(): void {
       state.view = "picker";
       return render();
     }
+    const events = myEvents(cur.tt, cur.sel);
     const c: PlanContext = {
       ...cur,
-      events: myEvents(cur.tt, cur.sel),
+      events,
       now: now(),
       at,
       date: state.date,
-      hours: hourRange(cur.tt),
+      hours: hourRange([...cur.tt.events, ...events]),
       withWeekend: hasWeekendClasses(cur.tt),
       anim: state.anim,
       marks: state.marks,
       unseen: unseenSummary(),
       offline: !navigator.onLine,
-      canInstall: Boolean(state.install),
+      canInstall: Boolean(state.install) || (ios && !installed),
       theme: state.theme,
     };
     html = wide.matches ? desktopPlan(c) : phonePlan(c, state.mode);
     const s = state.sheet;
     if (s?.kind === "event") {
-      const e = cur.tt.events.find((x) => x.id === s.id);
-      if (e) html += eventSheet(e, c.now, state.marks[e.id], cur.entry.url);
+      const e = events.find((x) => x.id === s.id) ?? cur.tt.events.find((x) => x.id === s.id);
+      const wf = wfPlanned(cur.tt);
+      if (e) html += eventSheet(e, c.now, state.marks[e.id], cur.entry.url, wf ? { own: cur.sel.wf, planned: wf.start } : null);
     } else if (s?.kind === "info") html += infoSheet(cur.entry, cur.tt, at);
     else if (s?.kind === "menu") html += menuSheet(c);
     else if (s?.kind === "ics-confirm") html += icsConfirmSheet(icsSummary());
     else if (s?.kind === "ics") html += icsSheet(s.count, s.file);
+    else if (s?.kind === "ios-install") html += iosInstallSheet();
+    else if (s?.kind === "share") html += renderShare(s.withGroups);
   }
   root.innerHTML = html;
   state.anim = "";
@@ -277,6 +295,7 @@ async function closeTop(): Promise<void> {
     state.sheet = null;
     await sheetOut();
   } else if (isPage(state.view)) leavePage();
+  if (state.selection && state.view === "plan") syncUrl(state.selection);
   render();
 }
 
@@ -412,6 +431,115 @@ function updateMark(id: string, change: Partial<Mark>): void {
   saveMark(state.marks, id, mark);
 }
 
+// ---------- sharing ----------
+
+/** The public address, alone or with the student's choice (?t=…&gr=…; kept readable, so the QR code stays small). */
+function shareUrl(withGroups: boolean): string {
+  const cur = current();
+  if (!withGroups || !cur) return SITE_URL;
+  const query = selectionParams(cur.sel).toString().replace(/%2F/gi, "/").replace(/%3A/gi, ":").replace(/%2C/gi, ",");
+  return `${SITE_URL}?${query}`;
+}
+
+let qrFailed = false;
+
+function renderShare(withGroups: boolean): string {
+  const cur = current()!;
+  const url = shareUrl(withGroups);
+  const qr = cachedQr(url);
+  if (!qr && !qrFailed) {
+    qrSvg(url).then(
+      () => state.sheet?.kind === "share" && render(),
+      () => {
+        qrFailed = true; // offline before the generator was ever loaded: the link buttons still work
+        if (state.sheet?.kind === "share") render();
+      },
+    );
+  }
+  const wf = cur.sel.wf ? `, WF od ${shortTime(cur.sel.wf)}` : "";
+  return shareSheet({
+    withGroups,
+    url,
+    groups: groupsSummary(cur.tt, cur.sel) + wf,
+    qr: qr ?? (qrFailed ? `<span class="qr-wait">Kod QR pojawi się po połączeniu z internetem.</span>` : null),
+    canShare: typeof navigator.share === "function",
+  });
+}
+
+async function shareLink(): Promise<void> {
+  if (state.sheet?.kind !== "share") return;
+  try {
+    await navigator.share({ title: "Plan zajęć UR (nieoficjalny)", url: shareUrl(state.sheet.withGroups) });
+  } catch {
+    // closed without sharing
+  }
+}
+
+async function copyLink(button: HTMLElement): Promise<void> {
+  if (state.sheet?.kind !== "share") return;
+  const url = shareUrl(state.sheet.withGroups);
+  try {
+    await navigator.clipboard.writeText(url);
+  } catch {
+    // no clipboard API (plain http, older browsers): the old way
+    const area = document.createElement("textarea");
+    area.value = url;
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    document.body.append(area);
+    area.select();
+    document.execCommand("copy");
+    area.remove();
+  }
+  button.textContent = "Skopiowano ✓";
+}
+
+async function downloadQr(): Promise<void> {
+  if (state.sheet?.kind !== "share") return;
+  try {
+    const a = document.createElement("a");
+    a.href = await qrPng(shareUrl(state.sheet.withGroups));
+    a.download = state.sheet.withGroups ? "plan-zajec-ur-moje-grupy-qr.png" : "plan-zajec-ur-qr.png";
+    document.body.append(a);
+    a.click();
+    a.remove();
+  } catch {
+    // offline before the generator was loaded
+  }
+}
+
+// ---------- WF: the student's own hour ----------
+
+/** Set (or clear, for the PDF's time) the WF start on the groups draft or on the saved choice. */
+function setWf(target: string | undefined, value: string, planned: string): string | undefined {
+  const own = validTime(value) && value !== planned ? value : undefined;
+  const sel = target === "draft" ? state.draft : state.selection;
+  if (!sel) return own;
+  if (own) sel.wf = own;
+  else delete sel.wf;
+  if (target !== "draft") saveSelection(sel);
+  return own;
+}
+
+/**
+ * While the student edits the time, update the text around the field instead of redrawing (a redraw would
+ * throw away a half-typed time on a computer). The plan behind the sheet is redrawn when the sheet closes.
+ */
+function showWf(input: HTMLInputElement, own: string | undefined): void {
+  const start = own ?? input.dataset.planned!;
+  if (!own && input.value !== start) input.value = start;
+  const row = input.closest(".wf-row")!;
+  row.querySelector(".wf-end")!.textContent = `do ${shortTime(endAfter(start, Number(input.dataset.minutes)))}`;
+  row.querySelector<HTMLElement>(".wf-reset")!.hidden = !own;
+  const cur = current();
+  const hours = root.querySelector("[data-wf-hours]");
+  if (cur && hours && state.sheet?.kind === "event") {
+    const id = state.sheet.id;
+    const e = myEvents(cur.tt, cur.sel).find((x) => x.id === id);
+    if (e) hours.textContent = hoursText(e.start, e.end, e.planned);
+  }
+}
+
 function fail(err: unknown): void {
   state.view = "error";
   state.error = err instanceof Error ? err.message : String(err);
@@ -497,6 +625,30 @@ function onClick(ev: MouseEvent): void {
     case "menu":
       openSheet({ kind: "menu" });
       break;
+    case "share":
+      if (state.sheet) {
+        state.sheet = { kind: "share", withGroups: false };
+        render();
+      } else openSheet({ kind: "share", withGroups: false });
+      break;
+    case "share-mode":
+      state.sheet = { kind: "share", withGroups: d.groups === "true" };
+      render();
+      break;
+    case "share-link":
+      void shareLink();
+      break;
+    case "copy-link":
+      void copyLink(el);
+      break;
+    case "qr-download":
+      void downloadQr();
+      break;
+    case "wf-reset": {
+      const input = root.querySelector<HTMLInputElement>("#wf-start");
+      if (input) showWf(input, setWf(d.target, "", input.dataset.planned!));
+      break;
+    }
     case "ics":
       if (state.sheet) {
         state.sheet = { kind: "ics-confirm" };
@@ -510,9 +662,14 @@ function onClick(ev: MouseEvent): void {
       applyTheme(d.theme as Theme);
       break;
     case "install":
-      void state.install?.prompt();
-      state.install = null;
-      closeLayer();
+      if (state.install) {
+        void state.install.prompt();
+        state.install = null;
+        closeLayer();
+      } else if (state.sheet) {
+        state.sheet = { kind: "ios-install" };
+        render();
+      } else openSheet({ kind: "ios-install" });
       break;
     case "changes":
       openPage("changes");
@@ -546,6 +703,8 @@ function onChange(ev: Event): void {
     const s = el.dataset.subject!;
     state.draft.optional = el.checked ? [...state.draft.optional, s] : state.draft.optional.filter((x) => x !== s);
     render();
+  } else if (el.dataset.action === "wf-start") {
+    showWf(el, setWf(el.dataset.target, el.value, el.dataset.planned!));
   } else if (el.dataset.action === "toggle-cancelled") {
     updateMark(el.dataset.id!, { cancelled: el.checked });
     render();

@@ -1,6 +1,7 @@
 # Plan zajęć UR · nieoficjalny — website
 
-Static site, plain TypeScript built with Vite, no UI framework and no runtime dependencies.
+Static site, plain TypeScript built with Vite, no UI framework. One runtime dependency, `qrcode` (MIT), loaded only
+when the share sheet opens.
 It reads the published data (`../data/published`, copied into `public/data` by `npm run sync-data`).
 Live at https://bylge.github.io/ur_timetable/ (deployed by `../.github/workflows/deploy.yml`).
 
@@ -10,13 +11,14 @@ Live at https://bylge.github.io/ur_timetable/ (deployed by `../.github/workflows
 | `src/main.ts` | entry point; registers `public/sw.js` (only in the built site) |
 | `src/types.ts` | shapes of the published JSON |
 | `src/time.ts` | dates/times in Polish time (Europe/Warsaw), Polish formatting |
-| `src/schedule.ts` | filtering by groups, which day opens, week anchoring, overlap layout |
+| `src/schedule.ts` | filtering by groups, which day opens, week anchoring, overlap layout; the student's own WF hour (every WF class moved, same length) |
 | `src/labels.ts` | names, the status line, Polish plurals |
-| `src/data.ts` | loading data (picks up the early downloads); the student's choice in `localStorage` and in the link (`?t=…&gr=2:1,3:2&opt=…`); marks, seen versions, theme |
+| `src/data.ts` | loading data (picks up the early downloads); the student's choice in `localStorage` and in the link (`?t=…&gr=2:1,3:2&opt=…&wf=1030`); marks, seen versions, theme |
 | `src/changes.ts` | which updates the student hasn't seen; each change as an item, own groups first |
 | `src/ics.ts` | `.ics` export in the browser (same UIDs as the Python export; manual marks as "ODWOŁANE: …") |
 | `src/views.ts` | rendering (HTML strings; every value escaped): plan, sheets, menu, Zmiany / O projekcie / Prywatność; `CONTACT_EMAIL` |
 | `src/app.ts` | state, one click handler (`data-action`), swipes, keys; history (the back gesture closes sheets and pages), the page lock behind sheets (`html.sheet-open`), theme, refresh when an installed app comes back |
+| `src/qr.ts` | QR codes for the share sheet (the generator is imported on demand) |
 | `src/version.ts` | `VERSION` from `package.json` (set by `vite.config.ts`) |
 | `src/styles.css` | everything except the theme tokens and the skeleton (those are in `index.html`); phone first |
 | `src/logic.test.ts`, `src/m3.test.ts` | Vitest: dates, filtering, layout, changes, `.ics`, plurals |

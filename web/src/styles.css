@@ -388,7 +388,10 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .sidenav .mi-icon svg { width: 17px; height: 17px; }
 .linkrow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 .link-btn {
-  border: 1px solid var(--line-strong); background: transparent; border-radius: 999px; padding: 6px 14px; min-height: 36px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line-strong); background: transparent; border-radius: 999px; min-height: 36px;
+  /* more room below than above: the system fonts' line box puts the letters a little low in a pill */
+  padding: 3px 14px 7px; line-height: 1.2;
   color: var(--accent); font-weight: 600; font-size: 14px;
 }
 .steps { margin: 8px 0 14px; padding-left: 20px; display: grid; gap: 6px; }
@@ -444,6 +447,44 @@ button.ch-row:hover { background: var(--surface-2); }
 .theme-row .seg-btn { padding: 6px 10px; }
 .sidenav .theme-row { min-height: 44px; padding: 6px 8px; gap: 10px; font-size: 14px; }
 .sidenav .theme-row .seg-btn { padding: 4px 8px; min-height: 30px; font-size: 13px; }
+
+/* ---------- menu (phone): main rows, smaller rows, info pages as links ---------- */
+a.menu-item { color: inherit; text-decoration: none; }
+.menu-more { display: grid; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.menu-more .menu-item, .menu-more .theme-row { min-height: 44px; padding: 5px 8px; font-size: 14.5px; }
+.menu-more .mi-icon { width: 30px; height: 30px; border-radius: 8px; background: transparent; color: var(--muted); }
+.menu-more .mi-icon svg { width: 18px; height: 18px; }
+.menu-more .mi-label { font-weight: 550; }
+.menu-links { margin: 10px 8px 4px; gap: 6px; }
+.menu-links .link-btn { padding: 2px 12px 6px; min-height: 34px; font-size: 13.5px; }
+
+/* ---------- share: QR code and link ---------- */
+.seg-share { display: flex; width: 100%; }
+.seg-share .seg-btn { flex: 1; min-height: 40px; }
+.share-hint { color: var(--muted); font-size: 14px; min-height: 2.8em; }
+.qr { margin: 4px 0 0; display: grid; justify-items: center; gap: 8px; }
+.qr-code {
+  width: 220px; height: 220px; display: grid; place-items: center; background: #fff; border-radius: var(--radius);
+  box-shadow: var(--shadow); overflow: hidden;
+}
+/* the generator draws modules as 1-unit strokes: undo the icon defaults (round, 2.2 wide) set on every svg */
+.qr-code svg { width: 100%; height: 100%; display: block; stroke-width: 1; stroke-linecap: butt; stroke-linejoin: miter; }
+.qr-wait { color: #5f6672; font-size: 13px; padding: 16px; text-align: center; }
+.qr figcaption { font-weight: 600; font-size: 14px; color: var(--muted); }
+.text-btn { border: 0; background: none; padding: 0; color: var(--accent); text-decoration: underline; font-size: inherit; }
+
+/* ---------- WF: the student's own hour ---------- */
+.split-hint { color: var(--muted); font-size: 14px; margin: 0 0 10px; }
+.wf-row { display: flex; align-items: center; gap: 10px; }
+.wf-time { width: auto; min-width: 0; flex: 0 1 8.5em; font-variant-numeric: tabular-nums; }
+.wf-end { color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wf-reset { margin-left: auto; flex: none; gap: 5px; }
+.wf-reset svg { width: 16px; height: 16px; }
+.wf-reset[hidden] { display: none; }
+.wf { margin: 16px -4px 10px; padding: 10px 12px 4px; border-radius: var(--radius); background: var(--accent-soft); }
+.wf h3 { margin: 0 0 8px; font-size: 15px; }
+.wf .field { background: var(--surface); }
+.wf .fine { margin: 8px 0 6px; }
 
 /* ---------- .ics confirmation ---------- */
 .confirm-facts { margin: 12px 0; }

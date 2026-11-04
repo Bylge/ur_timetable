@@ -36,6 +36,7 @@ export interface ClassEvent {
   group: number | null;
   color: string;
   notes: string[];
+  planned?: { start: string; end: string }; // set only in the browser: the PDF's times when the student moved the class (WF)
 }
 
 export interface DayNote {
@@ -70,6 +71,7 @@ export interface Selection {
   timetable: string;
   groups: Record<string, number>; // split ("2", "3", ...) -> group number
   optional: string[]; // optional subjects the student takes
+  wf?: string; // the student's own start time for Wychowanie fizyczne ("HH:MM"); missing = as in the PDF
 }
 
 /** One published update: events added, removed and changed (see src/ur_timetable/changes.py). */

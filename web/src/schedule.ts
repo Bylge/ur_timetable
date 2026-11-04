@@ -12,7 +12,60 @@ export function attends(e: ClassEvent, sel: Selection, optionalSubjects: string[
 export function myEvents(tt: Timetable, sel: Selection): ClassEvent[] {
   return tt.events
     .filter((e) => attends(e, sel, tt.optional_subjects))
+    .map((e) => (sel.wf && isWf(e) ? movedTo(e, sel.wf) : e))
     .sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
+}
+
+// ---------- Wychowanie fizyczne: the student's own hour ----------
+// Students sign up for a WF slot themselves, so the hour in the PDF isn't everyone's. A student can set their
+// own start time; every WF class moves there and keeps its length from the PDF. The event id stays, so marks
+// and notes still apply (and a calendar re-import updates the entry instead of adding a second one).
+
+const WF = /^wychowanie fizyczne/i;
+/** The parser's notes about the PDF's times say nothing about a class the student moved. */
+const TIME_NOTE = /^(start|end) \S+ from cell text/;
+
+export function isWf(e: ClassEvent): boolean {
+  return WF.test(e.title);
+}
+
+/** "HH:MM" between 00:00 and 23:59. */
+export function validTime(value: unknown): value is string {
+  return typeof value === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
+
+function pad(minutes: number): string {
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
+
+/** The class at a new start time, same length (ending at 23:59 at the latest). */
+export function movedTo(e: ClassEvent, start: string): ClassEvent {
+  if (start === e.start) return e;
+  return {
+    ...e,
+    start,
+    end: endAfter(start, toMinutes(e.end) - toMinutes(e.start)),
+    planned: { start: e.start, end: e.end },
+    notes: e.notes.filter((n) => !TIME_NOTE.test(n)),
+  };
+}
+
+/** WF as the PDF has it: the most common start and length, or null if the timetable has no WF. */
+export function wfPlanned(tt: Timetable): { start: string; minutes: number } | null {
+  const counts = new Map<string, number>();
+  for (const e of tt.events.filter(isWf)) {
+    const key = `${e.start}|${toMinutes(e.end) - toMinutes(e.start)}`;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
+  if (!top) return null;
+  const [start, minutes] = top[0].split("|");
+  return { start, minutes: Number(minutes) };
+}
+
+/** End of a class that starts at `start` and lasts `minutes`, as "HH:MM". */
+export function endAfter(start: string, minutes: number): string {
+  return pad(Math.min(toMinutes(start) + minutes, 23 * 60 + 59));
 }
 
 export function eventsOn(events: ClassEvent[], date: string): ClassEvent[] {
@@ -126,15 +179,15 @@ export function hasWeekendClasses(tt: Timetable): boolean {
   });
 }
 
-/** Hours shown on the time axis: at least 8:00–20:00, wider if the timetable needs it. */
-export function hourRange(tt: Timetable): { from: number; to: number } {
+/** Hours shown on the time axis: at least 8:00–20:00, wider if the classes need it (pass the student's own too: WF can move). */
+export function hourRange(events: ClassEvent[]): { from: number; to: number } {
   let from = 8;
   let to = 20;
-  for (const e of tt.events) {
+  for (const e of events) {
     from = Math.min(from, Math.floor(toMinutes(e.start) / 60));
     to = Math.max(to, Math.ceil(toMinutes(e.end) / 60));
   }
-  return { from, to };
+  return { from, to: Math.min(to, 24) };
 }
 
 export function semesterRange(tt: Timetable): { first: string; last: string } | null {
