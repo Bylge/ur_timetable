@@ -1,1 +1,215 @@
-[]
+[
+ {
+  "published_at": "2026-11-18T12:56:35+00:00",
+  "updated": "2026-11-18",
+  "sha256": "24138ace6ddf1e76d2c6656770d58a0ac117459a696557ea4fecbeb47d6bfe6a",
+  "previous_sha256": "f3301cdea98301125338327f9df269c911595361f372b4d20f4c94ec3694b9b4",
+  "added": [
+   {
+    "id": "d91c6c04cead",
+    "date": "2026-12-07",
+    "start": "08:00",
+    "end": "10:15",
+    "title": "Parazytologia",
+    "kind": "lecture",
+    "room": "G2.-102",
+    "partition": null,
+    "group": null,
+    "color": "#a6a6a6",
+    "notes": []
+   },
+   {
+    "id": "aae241cfd3ab",
+    "date": "2026-12-07",
+    "start": "10:15",
+    "end": "12:30",
+    "title": "Parazytologia",
+    "kind": "class",
+    "room": "G5.224",
+    "partition": 2,
+    "group": 1,
+    "color": "#a6a6a6",
+    "notes": []
+   },
+   {
+    "id": "162637d742d1",
+    "date": "2026-12-07",
+    "start": "12:30",
+    "end": "14:45",
+    "title": "Parazytologia",
+    "kind": "class",
+    "room": "G5.224",
+    "partition": 2,
+    "group": 2,
+    "color": "#a6a6a6",
+    "notes": []
+   },
+   {
+    "id": "628a5bad3b96",
+    "date": "2026-12-21",
+    "start": "08:00",
+    "end": "11:00",
+    "title": "Parazytologia",
+    "kind": "lecture",
+    "room": "G4.101",
+    "partition": null,
+    "group": null,
+    "color": "#a6a6a6",
+    "notes": []
+   },
+   {
+    "id": "2a136a65fb5a",
+    "date": "2026-12-21",
+    "start": "11:00",
+    "end": "13:15",
+    "title": "Parazytologia",
+    "kind": "class",
+    "room": "G5.224",
+    "partition": 2,
+    "group": 2,
+    "color": "#a6a6a6",
+    "notes": []
+   },
+   {
+    "id": "20130596a716",
+    "date": "2026-12-21",
+    "start": "13:15",
+    "end": "15:30",
+    "title": "Parazytologia",
+    "kind": "class",
+    "room": "G5.224",
+    "partition": 2,
+    "group": 1,
+    "color": "#a6a6a6",
+    "notes": []
+   },
+   {
+    "id": "018c03b903b5",
+    "date": "2027-01-04",
+    "start": "08:45",
+    "end": "11:00",
+    "title": "Parazytologia",
+    "kind": "lecture",
+    "room": "A2.46",
+    "partition": null,
+    "group": null,
+    "color": "#a6a6a6",
+    "notes": []
+   },
+   {
+    "id": "ada72ef7ab28",
+    "date": "2027-01-04",
+    "start": "11:00",
+    "end": "13:15",
+    "title": "Parazytologia",
+    "kind": "class",
+    "room": "A2.235",
+    "partition": 2,
+    "group": 1,
+    "color": "#a6a6a6",
+    "notes": []
+   },
+   {
+    "id": "7a1be21d4e2d",
+    "date": "2027-01-04",
+    "start": "13:15",
+    "end": "15:30",
+    "title": "Parazytologia",
+    "kind": "class",
+    "room": "A2.235",
+    "partition": 2,
+    "group": 2,
+    "color": "#a6a6a6",
+    "notes": []
+   },
+   {
+    "id": "29f5f7bdc71c",
+    "date": "2027-01-05",
+    "start": "14:00",
+    "end": "16:15",
+    "title": "Parazytologia",
+    "kind": "class",
+    "room": "A2.46",
+    "partition": 2,
+    "group": 1,
+    "color": "#a6a6a6",
+    "notes": []
+   },
+   {
+    "id": "e0b6432924bc",
+    "date": "2027-01-05",
+    "start": "16:15",
+    "end": "18:30",
+    "title": "Parazytologia",
+    "kind": "class",
+    "room": "A2.46",
+    "partition": 2,
+    "group": 2,
+    "color": "#a6a6a6",
+    "notes": []
+   },
+   {
+    "id": "8ceacb8ccfdc",
+    "date": "2027-01-12",
+    "start": "11:00",
+    "end": "13:15",
+    "title": "Parazytologia",
+    "kind": "class",
+    "room": "G4.227",
+    "partition": 2,
+    "group": 2,
+    "color": "#a6a6a6",
+    "notes": []
+   },
+   {
+    "id": "37d0a2c14481",
+    "date": "2027-01-12",
+    "start": "13:15",
+    "end": "15:00",
+    "title": "Parazytologia",
+    "kind": "class",
+    "room": "G4.227",
+    "partition": 2,
+    "group": 1,
+    "color": "#a6a6a6",
+    "notes": [
+     "end 15:00 from cell text (grid: 15:30)"
+    ]
+   }
+  ],
+  "removed": [],
+  "changed": [
+   {
+    "before": {
+     "id": "a6f591cb28d3",
+     "date": "2026-11-19",
+     "start": "08:45",
+     "end": "10:15",
+     "title": "Język angielski",
+     "kind": "class",
+     "room": "A2.208",
+     "partition": 2,
+     "group": 1,
+     "color": "#ffff00",
+     "notes": []
+    },
+    "after": {
+     "id": "a6f591cb28d3",
+     "date": "2026-11-19",
+     "start": "08:45",
+     "end": "10:15",
+     "title": "Język angielski",
+     "kind": "class",
+     "room": "A2.212",
+     "partition": 2,
+     "group": 1,
+     "color": "#ffff00",
+     "notes": []
+    },
+    "fields": [
+     "room"
+    ]
+   }
+  ]
+ }
+]

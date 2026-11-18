@@ -4,11 +4,11 @@
  "label": "Dietetyka, studia I stopnia stacjonarne, rok 1",
  "title": "ROZKŁAD ZAJĘĆ - DIETETYKA - ROK 1 - SEMESTR 1 - STUDIA I STOPNIA - TRYB STACJONARNY - 2026/2027",
  "source": {
-  "url": "https://www.ur.edu.pl/files/user_directory/300/Dietetyka/Rozk%C5%82ady%20zaj%C4%99%C4%87/Studia%20I%20stopnia/Dietetyka%201%20rok%20I%20st%20ST%20%2813.10.2026%29.pdf",
-  "updated": "2026-10-13",
-  "sha256": "f3301cdea98301125338327f9df269c911595361f372b4d20f4c94ec3694b9b4",
+  "url": "https://www.ur.edu.pl/files/user_directory/300/Dietetyka/Rozk%C5%82ady%20zaj%C4%99%C4%87/Studia%20I%20stopnia/Dietetyka%201%20rok%20I%20st%20ST%20%2819.11.2026%29.pdf",
+  "updated": "2026-11-18",
+  "sha256": "24138ace6ddf1e76d2c6656770d58a0ac117459a696557ea4fecbeb47d6bfe6a",
   "label": "Dietetyka, studia I stopnia stacjonarne, rok 1",
-  "published_at": "2026-10-21T20:29:22+00:00"
+  "published_at": "2026-11-18T12:56:35+00:00"
  },
  "splits": [
   2,
@@ -73,6 +73,11 @@
    "date": "2026-10-05",
    "kind": "info",
    "text": "Spotkanie organizacyjne 16:15"
+  },
+  {
+   "date": "2026-11-02",
+   "kind": "info",
+   "text": "(godziny rektorskie do 12:00)"
   },
   {
    "date": "2026-11-11",
@@ -2105,7 +2110,7 @@
    "end": "10:15",
    "title": "Język angielski",
    "kind": "class",
-   "room": "A2.208",
+   "room": "A2.212",
    "partition": 2,
    "group": 1,
    "color": "#ffff00",
@@ -2766,6 +2771,45 @@
    "notes": []
   },
   {
+   "id": "d91c6c04cead",
+   "date": "2026-12-07",
+   "start": "08:00",
+   "end": "10:15",
+   "title": "Parazytologia",
+   "kind": "lecture",
+   "room": "G2.-102",
+   "partition": null,
+   "group": null,
+   "color": "#a6a6a6",
+   "notes": []
+  },
+  {
+   "id": "aae241cfd3ab",
+   "date": "2026-12-07",
+   "start": "10:15",
+   "end": "12:30",
+   "title": "Parazytologia",
+   "kind": "class",
+   "room": "G5.224",
+   "partition": 2,
+   "group": 1,
+   "color": "#a6a6a6",
+   "notes": []
+  },
+  {
+   "id": "162637d742d1",
+   "date": "2026-12-07",
+   "start": "12:30",
+   "end": "14:45",
+   "title": "Parazytologia",
+   "kind": "class",
+   "room": "G5.224",
+   "partition": 2,
+   "group": 2,
+   "color": "#a6a6a6",
+   "notes": []
+  },
+  {
    "id": "d8b96bca8291",
    "date": "2026-12-07",
    "start": "13:15",
@@ -3316,6 +3360,45 @@
    "notes": []
   },
   {
+   "id": "628a5bad3b96",
+   "date": "2026-12-21",
+   "start": "08:00",
+   "end": "11:00",
+   "title": "Parazytologia",
+   "kind": "lecture",
+   "room": "G4.101",
+   "partition": null,
+   "group": null,
+   "color": "#a6a6a6",
+   "notes": []
+  },
+  {
+   "id": "2a136a65fb5a",
+   "date": "2026-12-21",
+   "start": "11:00",
+   "end": "13:15",
+   "title": "Parazytologia",
+   "kind": "class",
+   "room": "G5.224",
+   "partition": 2,
+   "group": 2,
+   "color": "#a6a6a6",
+   "notes": []
+  },
+  {
+   "id": "20130596a716",
+   "date": "2026-12-21",
+   "start": "13:15",
+   "end": "15:30",
+   "title": "Parazytologia",
+   "kind": "class",
+   "room": "G5.224",
+   "partition": 2,
+   "group": 1,
+   "color": "#a6a6a6",
+   "notes": []
+  },
+  {
    "id": "69aecc229def",
    "date": "2026-12-22",
    "start": "08:30",
@@ -3396,6 +3479,45 @@
    "notes": []
   },
   {
+   "id": "018c03b903b5",
+   "date": "2027-01-04",
+   "start": "08:45",
+   "end": "11:00",
+   "title": "Parazytologia",
+   "kind": "lecture",
+   "room": "A2.46",
+   "partition": null,
+   "group": null,
+   "color": "#a6a6a6",
+   "notes": []
+  },
+  {
+   "id": "ada72ef7ab28",
+   "date": "2027-01-04",
+   "start": "11:00",
+   "end": "13:15",
+   "title": "Parazytologia",
+   "kind": "class",
+   "room": "A2.235",
+   "partition": 2,
+   "group": 1,
+   "color": "#a6a6a6",
+   "notes": []
+  },
+  {
+   "id": "7a1be21d4e2d",
+   "date": "2027-01-04",
+   "start": "13:15",
+   "end": "15:30",
+   "title": "Parazytologia",
+   "kind": "class",
+   "room": "A2.235",
+   "partition": 2,
+   "group": 2,
+   "color": "#a6a6a6",
+   "notes": []
+  },
+  {
    "id": "3f12c85b61b3",
    "date": "2027-01-05",
    "start": "08:30",
@@ -3421,6 +3543,32 @@
    "partition": null,
    "group": null,
    "color": "#cc99ff",
+   "notes": []
+  },
+  {
+   "id": "29f5f7bdc71c",
+   "date": "2027-01-05",
+   "start": "14:00",
+   "end": "16:15",
+   "title": "Parazytologia",
+   "kind": "class",
+   "room": "A2.46",
+   "partition": 2,
+   "group": 1,
+   "color": "#a6a6a6",
+   "notes": []
+  },
+  {
+   "id": "e0b6432924bc",
+   "date": "2027-01-05",
+   "start": "16:15",
+   "end": "18:30",
+   "title": "Parazytologia",
+   "kind": "class",
+   "room": "A2.46",
+   "partition": 2,
+   "group": 2,
+   "color": "#a6a6a6",
    "notes": []
   },
   {
@@ -3533,6 +3681,34 @@
    "color": "#b4c6e7",
    "notes": [
     "start 08:30 from cell text (grid: 08:45)"
+   ]
+  },
+  {
+   "id": "8ceacb8ccfdc",
+   "date": "2027-01-12",
+   "start": "11:00",
+   "end": "13:15",
+   "title": "Parazytologia",
+   "kind": "class",
+   "room": "G4.227",
+   "partition": 2,
+   "group": 2,
+   "color": "#a6a6a6",
+   "notes": []
+  },
+  {
+   "id": "37d0a2c14481",
+   "date": "2027-01-12",
+   "start": "13:15",
+   "end": "15:00",
+   "title": "Parazytologia",
+   "kind": "class",
+   "room": "G4.227",
+   "partition": 2,
+   "group": 1,
+   "color": "#a6a6a6",
+   "notes": [
+    "end 15:00 from cell text (grid: 15:30)"
    ]
   },
   {
