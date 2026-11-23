@@ -81,7 +81,7 @@ test("evening after classes (Wed 14.10, 19:30)", async ({ page }) => {
     await expect(page.getByRole("heading", { name: "Czwartek, 15 października" })).toBeVisible();
     await shot(page, "12-evening-next-day");
   } else {
-    await expect(page.locator(".strip")).toContainText("Zajęcia na dziś zakończone");
+    await expect(page.locator(".strip")).toHaveCount(0); // the week view has no "zakończone" strip (clutter)
     await shot(page, "11-evening");
   }
 });
@@ -168,6 +168,8 @@ test("changes since the last visit (Wed 14.10, 10:00)", async ({ page }) => {
 
 test("no changes yet", async ({ page }) => {
   await at(page, "2026-10-14T10:00:00+02:00");
+  // the published history has real updates since 18.11: an empty one for this screen
+  await page.route("**/changes.json", (route) => route.fulfill({ json: [] }));
   await page.goto(plan() + "#zmiany");
   await expect(page.getByText("Brak zmian")).toBeVisible();
   await shot(page, "43-changes-empty");
@@ -199,7 +201,7 @@ test("menu, calendar file, info pages", async ({ page }) => {
   if (phone) {
     await page.getByRole("button", { name: "Menu" }).click();
     const report = page.getByRole("link", { name: /Zgłoś błąd lub uwagę/ });
-    await expect(report).toHaveAttribute("href", /^mailto:plan\.zajec\.nieoficialny@gmail\.com\?subject=.*Grupy%3A%201%2F2/);
+    await expect(report).toHaveAttribute("href", /^mailto:plan\.zajec\.nieoficialny@gmail\.com\?subject=.*Grupy%3A%201%20z%202/);
     await shot(page, "60-menu");
   }
   await page.getByRole("button", { name: /Dodaj do kalendarza/ }).click();
@@ -234,7 +236,7 @@ test("share: QR code, with and without groups", async ({ page }) => {
   await expect(dialog.getByText("bylge.github.io/ur_timetable")).toBeVisible();
   await shot(page, "66-share");
   await dialog.getByRole("button", { name: "Z moimi grupami" }).click();
-  await expect(dialog.getByText(/grupy 1\/2 · 1\/3 · 1\/4 · 1\/5/)).toBeVisible();
+  await expect(dialog.getByText(/grupy 1 z 2 · 1 z 3 · 1 z 4 · 1 z 5/)).toBeVisible();
   await expect(dialog.locator(".qr-code svg")).toBeVisible();
   await shot(page, "67-share-groups");
   const download = page.waitForEvent("download");
@@ -267,6 +269,117 @@ test("WF at the student's own hour (Tue 13.10, 7:00)", async ({ page }) => {
   await page.getByRole("button", { name: "Pokaż plan" }).click();
   await expect(page.locator(".block", { hasText: "Wychow" }).first()).toHaveAttribute("aria-label", /8:30–10:15/);
   await expect(page).not.toHaveURL(/wf=/);
+});
+
+test("back gesture returns from Twoje grupy and the plan picker", async ({ page }) => {
+  await at(page, "2026-10-14T10:00:00+02:00");
+  await page.goto("about:blank");
+  await page.goto(plan());
+  const groups = page.getByRole("heading", { name: "Twoje grupy" });
+  const onPlan = page.locator(".block").first();
+  // bottom bar (phone) or sidebar (desktop) -> groups -> back
+  await page.locator(".selection, .sel-card .secondary").first().click();
+  await expect(groups).toBeVisible();
+  await page.goBack();
+  await expect(onPlan).toBeVisible();
+  // groups -> picker -> back -> back
+  await page.locator(".selection, .sel-card .secondary").first().click();
+  await page.getByRole("button", { name: /zmień/ }).click();
+  await expect(page.getByRole("heading", { name: "Wybierz swój plan" })).toBeVisible();
+  await page.goBack();
+  await expect(groups).toBeVisible();
+  await page.goBack();
+  await expect(onPlan).toBeVisible();
+  // saving uses the entry up: the next back leaves the site, it doesn't reopen the groups screen
+  await page.locator(".selection, .sel-card .secondary").first().click();
+  await page.getByRole("button", { name: "Pokaż plan" }).click();
+  await expect(onPlan).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL("about:blank");
+  if (test.info().project.name === "phone") {
+    // from the menu: the menu's entry becomes the groups screen's
+    await page.goto(plan());
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page.locator('.menu [data-action="groups"]').click();
+    await expect(groups).toBeVisible();
+    await page.goBack();
+    await expect(onPlan).toBeVisible();
+  }
+});
+
+test("today: the class now, the next one; recent changes marked (Wed 25.11)", async ({ page }) => {
+  // 25.11: Fizjologia moved to MS Teams in the 23.11 update (a recent change, within 14 days)
+  await at(page, "2026-11-25T17:00:00+01:00");
+  await page.goto(plan());
+  if (test.info().project.name === "phone") {
+    const line = page.locator(".nownext");
+    await expect(line).toContainText(/Za 45 min:\s*Fizjologia człowieka/);
+    await expect(page.locator(".block.changed").first()).toContainText("Nowa sala");
+    await shot(page, "16-now-next-changed");
+    await line.click();
+    await expect(page.getByText(/Nowa sala, było:/)).toBeVisible();
+    await shot(page, "17-changed-sheet");
+    await page.keyboard.press("Escape");
+    await page.clock.setFixedTime(new Date("2026-11-25T18:00:00+01:00"));
+    await page.locator('[data-mode="week"]').click();
+    await page.locator('[data-mode="day"]').click();
+    await expect(page.locator(".nownext")).toContainText(/Teraz:\s*Fizjologia człowieka/);
+  } else {
+    await expect(page.locator(".block.changed").first()).toBeVisible();
+  }
+});
+
+test("day view: an hour before the first class, filled to the screen without scrolling (Mon 23.11)", async ({ page }) => {
+  test.skip(test.info().project.name !== "phone", "phone only");
+  // Mon 23.11, groups 1: classes 13:15–19:15 -> the day starts at 12:00, the timeline ends at the bottom bar
+  await at(page, "2026-11-23T08:00:00+01:00");
+  await page.goto(plan());
+  await expect(page.locator(".day .axis span").first()).toHaveText("12:00");
+  const fit = await page.evaluate(() => {
+    const timeline = document.querySelector(".day .timeline")!.getBoundingClientRect();
+    const bar = document.querySelector(".bottombar")!.getBoundingClientRect();
+    return { gap: bar.top - timeline.bottom, scrolls: document.documentElement.scrollHeight > window.innerHeight + 1 };
+  });
+  expect(fit.gap).toBeGreaterThanOrEqual(0);
+  expect(fit.gap).toBeLessThan(52 + 12);
+  await shot(page, "18-day-fill");
+  // a short day fills the screen; a swipe anywhere in the plan (not only on the timeline) changes the day
+  const box = (await page.locator(".dayhead").boundingBox())!;
+  await page.locator(".dayhead").dispatchEvent("touchstart", { touches: [{ identifier: 0, clientX: box.x + 300, clientY: box.y + 10 }] });
+  await page.locator(".dayhead").dispatchEvent("touchend", { changedTouches: [{ identifier: 0, clientX: box.x + 100, clientY: box.y + 12 }] });
+  await expect(page.getByRole("heading", { name: "Wtorek, 24 listopada" })).toBeVisible();
+});
+
+test("Co nowego: once after an update, only for returning students", async ({ page }) => {
+  await at(page, "2026-10-14T10:00:00+02:00");
+  const popup = page.getByRole("dialog", { name: "Co nowego" });
+  // first visit: nothing
+  await page.goto(plan());
+  await expect(page.locator(".block").first()).toBeVisible();
+  await expect(popup).toHaveCount(0);
+  // a returning student who last saw an older version: once
+  await page.evaluate(() => localStorage.setItem("planur:version:v1", "0.5.0"));
+  await page.reload();
+  await expect(popup).toBeVisible();
+  await shot(page, "19-news");
+  await page.locator(".news-card").click(); // a tap anywhere closes it, also on the text
+  await expect(popup).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator(".block").first()).toBeVisible();
+  await expect(popup).toHaveCount(0);
+});
+
+test("week: short names, rooms, the class in progress (Wed 25.11, 12:00)", async ({ page }) => {
+  test.skip(test.info().project.name !== "phone", "phone only");
+  await at(page, "2026-11-25T12:00:00+01:00");
+  await page.goto(plan());
+  await page.locator('[data-mode="week"]').click();
+  const now = page.locator(".block.now");
+  await expect(now).toHaveCount(1);
+  await expect(now).toContainText("Biochemia");
+  await expect(now).toContainText("D3.241");
+  await expect(now).toHaveAttribute("aria-label", /^Teraz: Biochemia ogólna i żywności/);
+  await shot(page, "21-week-now");
 });
 
 test.describe("iPhone", () => {

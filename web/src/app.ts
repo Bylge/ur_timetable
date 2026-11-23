@@ -20,13 +20,18 @@ import {
   saveTheme,
   saveSeen,
   saveSelection,
+  hasStoredSelection,
+  loadSeenVersion,
+  saveSeenVersion,
   selectionParams,
   syncUrl,
   type Theme,
 } from "./data";
 import { endAfter, hasWeekendClasses, hourRange, myEvents, selectionComplete, validTime, weekStart, wfPlanned } from "./schedule";
 import { cachedQr, qrPng, qrSvg } from "./qr";
-import { myChangeCount, unseenChanges } from "./changes";
+import { NEWS } from "./news";
+import { VERSION } from "./version";
+import { myChangeCount, recentChanges, unseenChanges } from "./changes";
 import { download, icsFileName, toIcs } from "./ics";
 import { groupsSummary, timetableShort } from "./labels";
 import { addDays, nowInWarsaw, shortTime, weekday, type Now } from "./time";
@@ -47,6 +52,8 @@ import {
   phonePlan,
   pickerView,
   privacyView,
+  newsPopup,
+  DAY_HOUR_PX,
   shareSheet,
   SITE_URL,
   type PlanContext,
@@ -62,6 +69,7 @@ type Sheet =
   | { kind: "ics"; count: number; file: string }
   | { kind: "ios-install" }
   | { kind: "share"; withGroups: boolean }
+  | { kind: "news" }
   | null;
 
 const PAGE_HASH: Record<Page, string> = { changes: "zmiany", about: "o-projekcie", privacy: "prywatnosc" };
@@ -102,6 +110,7 @@ const state = {
   leaving: false, // a sheet is animating out
   loadedAt: Date.now(),
   openedOn: "", // "today" when the plan was opened, to follow the date if the app stays open overnight
+  fill: { key: "", hours: 0 }, // day view: empty hours that fill the screen below a short day (see fitDay)
 };
 
 // The skeleton from index.html, shown until the data is ready.
@@ -189,6 +198,7 @@ function unseenSummary(): PlanContext["unseen"] {
 // ---------- rendering ----------
 
 function render(): void {
+  const anim = state.anim;
   const at = new Date();
   let html = "";
   const cur = current();
@@ -219,22 +229,25 @@ function render(): void {
       anim: state.anim,
       marks: state.marks,
       unseen: unseenSummary(),
+      changed: recentChanges(state.changes.get(cur.tt.id) ?? [], now().date),
       offline: !navigator.onLine,
       canInstall: Boolean(state.install) || (ios && !installed),
       theme: state.theme,
+      fillHours: state.fill.key === fillKey() ? state.fill.hours : 0,
     };
     html = wide.matches ? desktopPlan(c) : phonePlan(c, state.mode);
     const s = state.sheet;
     if (s?.kind === "event") {
       const e = events.find((x) => x.id === s.id) ?? cur.tt.events.find((x) => x.id === s.id);
       const wf = wfPlanned(cur.tt);
-      if (e) html += eventSheet(e, c.now, state.marks[e.id], cur.entry.url, wf ? { own: cur.sel.wf, planned: wf.start } : null);
+      if (e) html += eventSheet(e, c.now, state.marks[e.id], cur.entry.url, wf ? { own: cur.sel.wf, planned: wf.start } : null, c.changed.get(e.id));
     } else if (s?.kind === "info") html += infoSheet(cur.entry, cur.tt, at);
     else if (s?.kind === "menu") html += menuSheet(c);
     else if (s?.kind === "ics-confirm") html += icsConfirmSheet(icsSummary());
     else if (s?.kind === "ics") html += icsSheet(s.count, s.file);
     else if (s?.kind === "ios-install") html += iosInstallSheet();
     else if (s?.kind === "share") html += renderShare(s.withGroups);
+    else if (s?.kind === "news" && NEWS[VERSION]) html += newsPopup(VERSION, NEWS[VERSION]);
   }
   root.innerHTML = html;
   state.anim = "";
@@ -242,7 +255,37 @@ function render(): void {
   state.sheetEnter = false;
   document.documentElement.classList.toggle("sheet-open", Boolean(state.sheet));
   fitDayhead();
-  root.querySelector<HTMLElement>(".sheet")?.focus();
+  root.querySelector<HTMLElement>(".sheet, .news-card")?.focus();
+  if (fitDay()) {
+    state.anim = anim; // the second pass replaces the first before it's painted: keep its transition
+    render();
+  }
+}
+
+/** Which day view the measured fill belongs to (another day or screen size is measured again). */
+function fillKey(): string {
+  return `${state.date}|${window.innerHeight}`;
+}
+
+/**
+ * Phone day view: a short day leaves empty space under its timeline. Add whole empty hours after the last class
+ * until the timeline reaches the bottom bar, never past it (that would make the page scroll for nothing).
+ * Returns true when the hours changed and the view needs drawing again.
+ */
+function fitDay(): boolean {
+  const timeline = root.querySelector<HTMLElement>(".day .timeline");
+  const bar = root.querySelector<HTMLElement>(".bottombar");
+  if (!timeline || !bar || state.view !== "plan" || state.mode !== "day" || wide.matches) return false;
+  const key = fillKey();
+  const current = state.fill.key === key ? state.fill.hours : 0;
+  const bottom = timeline.getBoundingClientRect().bottom + window.scrollY;
+  const free = window.innerHeight - bar.offsetHeight - bottom;
+  let hours = current;
+  if (free >= DAY_HOUR_PX) hours += Math.floor(free / DAY_HOUR_PX);
+  else if (free < 0 && current > 0) hours = Math.max(0, current - Math.ceil(-free / DAY_HOUR_PX));
+  const changed = state.fill.key !== key || hours !== current;
+  state.fill = { key, hours };
+  return changed && hours !== current;
 }
 
 /** The day header stays on one line: if "Poniedziałek, 26 października · za 5 dni · Dziś" wraps, use "Pon.". */
@@ -285,8 +328,36 @@ function closeLayer(): void {
   else void closeTop(); // opened from a link (#o-projekcie) or the entry is gone: close directly
 }
 
+/** Set when the app itself goes back in history (after "Pokaż plan"): the screen is already the right one. */
+let ownBack = false;
+
 function onPopState(): void {
+  if (ownBack) {
+    ownBack = false;
+    if (state.selection && state.view === "plan") syncUrl(state.selection);
+    render();
+    return;
+  }
   void closeTop();
+}
+
+/** Leave a screen that has its own history entry without showing anything else (the caller sets the view). */
+function dropLayer(): void {
+  if (!history.state?.layer) return;
+  ownBack = true;
+  history.back();
+}
+
+/** "Twoje grupy" and the plan picker are history entries, so the back gesture returns from them. */
+function openScreen(view: "groups" | "picker"): void {
+  if (state.sheet) {
+    // the sheet's entry becomes the screen's
+    state.sheet = null;
+    history.replaceState({ layer: true }, "", location.href);
+  } else pushLayer();
+  state.view = view;
+  render();
+  window.scrollTo(0, 0);
 }
 
 async function closeTop(): Promise<void> {
@@ -295,6 +366,8 @@ async function closeTop(): Promise<void> {
     state.sheet = null;
     await sheetOut();
   } else if (isPage(state.view)) leavePage();
+  else if (state.view === "picker") state.view = state.draft ? "groups" : current() ? "plan" : "picker";
+  else if (state.view === "groups") state.view = current() ? "plan" : "picker";
   if (state.selection && state.view === "plan") syncUrl(state.selection);
   render();
 }
@@ -386,8 +459,13 @@ async function pickTimetable(id: string): Promise<void> {
     await timetable(id);
     const keep = state.selection?.timetable === id ? state.selection : null;
     state.draft = keep ? structuredClone(keep) : { timetable: id, groups: {}, optional: [] };
-    state.view = "groups";
-    render();
+    if (history.state?.layer) {
+      // picker opened from "Twoje grupy": back to that entry, showing the groups of the picked plan
+      dropLayer();
+      state.view = "groups";
+      render();
+    } else openScreen("groups"); // first visit: the picker is the start, the groups screen goes on top
+    window.scrollTo(0, 0);
   } catch (err) {
     fail(err);
   }
@@ -400,6 +478,7 @@ function saveGroups(): void {
   saveSelection(state.selection);
   state.view = "plan";
   state.date = openingDate();
+  dropLayer(); // the screen's history entry is used up: back from the plan leaves the app, as on any first screen
   render();
 }
 
@@ -540,6 +619,18 @@ function showWf(input: HTMLInputElement, own: string | undefined): void {
   }
 }
 
+/**
+ * "Co nowego" once per version, only to students who used the site before (a first visit has nothing to compare).
+ * `?nowosci` in the link shows it anyway (for checking how it looks).
+ */
+function showNews(returning: boolean): void {
+  const forced = new URLSearchParams(location.search).has("nowosci");
+  const seen = loadSeenVersion();
+  saveSeenVersion(VERSION);
+  if (!NEWS[VERSION] || state.view !== "plan") return;
+  if (forced || (returning && seen !== VERSION)) openSheet({ kind: "news" });
+}
+
 function fail(err: unknown): void {
   state.view = "error";
   state.error = err instanceof Error ? err.message : String(err);
@@ -564,22 +655,19 @@ function onClick(ev: MouseEvent): void {
       saveGroups();
       break;
     case "groups":
-      if (state.sheet) {
-        state.sheet = null;
-        history.replaceState(null, "", location.href);
-      }
       state.draft = structuredClone(state.selection!);
-      state.view = "groups";
-      render();
+      openScreen("groups");
       break;
     case "picker":
-      state.view = "picker";
-      render();
+      openScreen("picker");
       break;
     case "back":
-      if (state.view === "picker" && state.draft) state.view = "groups";
-      else state.view = current() ? "plan" : "picker";
-      render();
+      if (history.state?.layer) closeLayer();
+      else {
+        if (state.view === "picker" && state.draft) state.view = "groups";
+        else state.view = current() ? "plan" : "picker";
+        render();
+      }
       break;
     case "mode":
       setMode(d.mode as "day" | "week");
@@ -718,7 +806,7 @@ function onInput(ev: Event): void {
 }
 
 function onKey(ev: KeyboardEvent): void {
-  if (ev.key === "Escape" && (state.sheet || isPage(state.view))) {
+  if (ev.key === "Escape" && (state.sheet || isPage(state.view) || ((state.view === "groups" || state.view === "picker") && history.state?.layer))) {
     closeLayer();
     return;
   }
@@ -804,11 +892,15 @@ export async function start(el: HTMLElement): Promise<void> {
     if (state.view === "plan") render();
   });
   wide.addEventListener("change", () => render());
-  window.addEventListener("resize", fitDayhead);
+  window.addEventListener("resize", () => {
+    fitDayhead();
+    if (fitDay()) render();
+  });
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden && Date.now() - state.loadedAt > REFRESH_AFTER_MS) void refresh();
   });
   skeleton = root.innerHTML; // index.html's skeleton stays on screen until the first real render
+  const returning = hasStoredSelection(); // read before this visit saves a choice
 
   try {
     state.index = await loadIndex();
@@ -842,6 +934,7 @@ export async function start(el: HTMLElement): Promise<void> {
       state.view = linked;
     }
     render();
+    showNews(returning);
   } catch (err) {
     fail(err);
   }

@@ -36,8 +36,14 @@ export function timetableShort(id: string): string {
 }
 
 /** "1/2 · 3/3 · 1/4 · 2/5" — group / number of groups, for each split */
+/** "1 z 2 · 3 z 3 · …": group and number of groups, for each split (where there's room). */
 export function groupsSummary(tt: Timetable, sel: Selection): string {
-  return tt.splits.map((p) => `${sel.groups[String(p)] ?? "–"}/${p}`).join(" · ");
+  return tt.splits.map((p) => `${sel.groups[String(p)] ?? "–"} z ${p}`).join(" · ");
+}
+
+/** "1 · 3 · 2 · 4": just the groups, in the order of the splits (bottom bar; "2/2" read like "2 of 2"). */
+export function groupsShort(tt: Timetable, sel: Selection): string {
+  return tt.splits.map((p) => `${sel.groups[String(p)] ?? "–"}`).join(" · ");
 }
 
 export function kindLabel(kind: Kind): string {
@@ -81,3 +87,25 @@ export function checkedLabel(isoDateTime: string, at: Date = new Date()): string
 }
 
 export { ago };
+
+/** Subjects whose name the general rules in shortTitle can't shorten well. */
+const SHORT_NAMES: Record<string, string> = {
+  "wychowanie fizyczne": "WF",
+  "podstawy opieki nad chorym": "Opieka",
+};
+
+/**
+ * A name that fits a narrow week column (~55 px): an abbreviation the name has ("… (KPP)"), a known short name,
+ * "Język angielski" -> "Angielski", else the first word, cut at 9 letters ("Mikrobiologia" -> "Mikrobio."),
+ * with capitals only at the start ("SZKOLENIE …" -> "Szkolenie").
+ */
+export function shortTitle(title: string): string {
+  const abbr = /\(([A-ZĄĆĘŁŃÓŚŹŻ]{2,})\)/.exec(title);
+  if (abbr) return abbr[1];
+  const known = SHORT_NAMES[title.trim().toLowerCase()];
+  if (known) return known;
+  const words = title.trim().split(/\s+/);
+  const word = /^język$/i.test(words[0]) && words[1] ? words[1] : words[0];
+  const cased = word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  return cased.length > 10 ? `${cased.slice(0, 8)}.` : cased;
+}

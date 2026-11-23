@@ -2,9 +2,10 @@
 // handled in app.ts. Every interpolated value goes through esc().
 
 import type { ChangeSet, ClassEvent, IndexEntry, Mark, Selection, Timetable } from "./types";
-import { changeItems, type ChangeItem } from "./changes";
+import { changeItems, type ChangeItem, type RecentChange } from "./changes";
 import { VERSION } from "./version";
 import type { Theme } from "./data";
+import type { News } from "./news";
 import {
   endAfter,
   eventsOn,
@@ -36,7 +37,7 @@ import {
   weekdayShort,
   type Now,
 } from "./time";
-import { groupsSummary, kindLabel, kindShort, plural, programmeName, parseId, sourceStatus, timetableName, timetableShort } from "./labels";
+import { groupsShort, groupsSummary, shortTitle, kindLabel, kindShort, plural, programmeName, parseId, sourceStatus, timetableName, timetableShort } from "./labels";
 
 export function esc(value: unknown): string {
   return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -58,9 +59,30 @@ const ICON = {
   mail: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="M4 7l8 6 8-6"/></svg>',
   theme: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" fill="currentColor"/></svg>',
   share: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="17.5" cy="5.5" r="2.5"/><circle cx="6.5" cy="12" r="2.5"/><circle cx="17.5" cy="18.5" r="2.5"/><path d="M8.7 10.7l6.6-3.9M8.7 13.3l6.6 3.9"/></svg>',
+  clock: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>',
+  week: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M9 10v10M14.5 10v10"/></svg>',
+  palette: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.2 0 1.8-.8 1.8-1.7 0-1.2-1-1.6-1-2.6 0-1 .8-1.7 1.8-1.7h2.2a3.7 3.7 0 0 0 3.7-3.7C20.5 6.9 16.7 3.5 12 3.5z"/><circle cx="7.8" cy="11" r="1"/><circle cx="10.5" cy="7.5" r="1"/><circle cx="15" cy="7.8" r="1"/></svg>',
   undo: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 9.5h10a5 5 0 0 1 0 10H9M8.5 5.5l-4 4 4 4"/></svg>',
   install: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>',
 };
+
+/**
+ * Softer block colours: the subject colour as a stripe, a light tint of it as the block (styles.css). A pale PDF
+ * colour (#ccecff, #ffffcc) is darkened for this, to a lightness of at most 62%, so its stripe shows on white and
+ * its tint matches the others instead of being nearly white.
+ */
+export function softColor(hex: string): string {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  const d = max - min;
+  const sat = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+  let h = 0;
+  if (d) h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  const hue = Math.round((h * 60 + 360) % 360);
+  return `--c:hsl(${hue} ${Math.round(sat * 100)}% ${Math.round(Math.min(l, 0.62) * 100)}%)`;
+}
 
 export function textColorOn(hex: string): string {
   const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
@@ -74,17 +96,6 @@ export function zajecia(n: number): string {
   return `${n} ${last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14) ? "zajęcia" : "zajęć"}`;
 }
 
-/** Short title for narrow week columns: the abbreviation if the name has one, else whole words per line. */
-function compactTitle(title: string): string {
-  const abbr = /\(([A-ZĄĆĘŁŃÓŚŹŻ]{2,})\)/.exec(title);
-  if (abbr) return `<span class="b-word">${esc(abbr[1])}</span>`;
-  const words: string[] = [];
-  for (const w of title.split(/\s+/)) {
-    if (words.length && words[words.length - 1].length <= 2) words[words.length - 1] += ` ${w}`;
-    else words.push(w);
-  }
-  return words.map((w) => `<span class="b-word">${esc(w)}</span>`).join("");
-}
 
 function groupText(e: ClassEvent): string {
   return e.partition && e.partition > 1 ? `gr. ${e.group}/${e.partition}` : "";
@@ -92,9 +103,12 @@ function groupText(e: ClassEvent): string {
 
 // ---------- shared pieces ----------
 
-/** The name; the "demo" pill goes elsewhere where space is tight (the phone plan has it in the status line). */
-export function brand(demo = true): string {
-  return `<div class="brand"><span class="brand-name">Plan zajęć UR</span><span class="brand-tag">nieoficjalny</span>${demo ? demoPill() : ""}</div>`;
+/**
+ * The name; the "demo" pill goes elsewhere where space is tight (the phone plan has it in the status line).
+ * `short`: "Plan UR" for the phone's top bar, where the full name pushed "nieoficjalny" out ("nieoficja…" on iPhone).
+ */
+export function brand(demo = true, short = false): string {
+  return `<div class="brand"><span class="brand-name">${short ? "Plan UR" : "Plan zajęć UR"}</span><span class="brand-tag">nieoficjalny</span>${demo ? demoPill() : ""}</div>`;
 }
 
 function demoPill(): string {
@@ -234,7 +248,16 @@ interface AxisOptions {
   compact?: boolean; // narrow week columns on a phone
   now?: Now;
   marks?: Record<string, Mark>;
+  changed?: Map<string, RecentChange>;
 }
+
+/** Short names of a recent change, on the class block and in its sheet. */
+const RECENT_LABEL: Record<RecentChange["kind"], string> = {
+  added: "Nowe",
+  moved: "Nowa godz.",
+  room: "Nowa sala",
+  other: "Zmiana",
+};
 
 function block(p: Placed, o: AxisOptions, now?: Now): string {
   const e = p.event;
@@ -242,23 +265,30 @@ function block(p: Placed, o: AxisOptions, now?: Now): string {
   const height = Math.max(((toMinutes(e.end) - toMinutes(e.start)) / 60) * o.hourPx - 2, 14);
   const width = 100 / p.lanes;
   const past = now && e.date === now.date && toMinutes(e.end) <= now.minutes;
+  // going on now: a ring, and the part that's over shaded (--p = share of the class that has passed)
+  const isNow = now && e.date === now.date && toMinutes(e.start) <= now.minutes && now.minutes < toMinutes(e.end);
+  const passed = isNow ? Math.round(((now.minutes - toMinutes(e.start)) / (toMinutes(e.end) - toMinutes(e.start))) * 100) : 0;
   const short = height < 46;
   const mark = o.marks?.[e.id];
   const cancelled = Boolean(mark?.cancelled);
   const meta = [kindShort(e.kind), groupText(e)].filter(Boolean).join(" · ");
-  const label = `${cancelled ? "Odwołane: " : ""}${e.title}, ${shortTime(e.start)}–${shortTime(e.end)}${meta ? `, ${meta}` : ""}${e.room ? `, sala ${e.room}` : ""}${mark?.note ? `, notatka: ${mark.note}` : ""}`;
+  const change = o.changed?.get(e.id);
+  const chg = change && !cancelled ? `<span class="b-chg">${RECENT_LABEL[change.kind]}</span>` : "";
+  const label = `${cancelled ? "Odwołane: " : ""}${change ? `Zmiana w planie (${RECENT_LABEL[change.kind].toLowerCase()}): ` : ""}${e.title}, ${shortTime(e.start)}–${shortTime(e.end)}${meta ? `, ${meta}` : ""}${e.room ? `, sala ${e.room}` : ""}${mark?.note ? `, notatka: ${mark.note}` : ""}`;
   const badge = cancelled
     ? `<span class="b-cancel"><span class="b-badge">Odwołane</span>${mark?.note ? `<span class="b-note">${esc(mark.note)}</span>` : ""}</span>`
     : "";
   const inner = o.compact
-    ? `<span class="b-title">${compactTitle(e.title)}</span>`
+    ? `<span class="b-title">${esc(shortTitle(e.title))}</span>${height >= 30 && e.room ? `<span class="b-room">${esc(e.room)}</span>` : ""}${
+        height >= 58 ? `<span class="b-time">${esc(shortTime(e.start))}</span>` : ""
+      }`
     : `<span class="b-title">${esc(e.title)}</span>
-       ${short && cancelled ? badge : `<span class="b-meta">${esc(shortTime(e.start))}–${esc(shortTime(e.end))}${meta ? ` · ${esc(meta)}` : ""}</span>`}
+       ${short && cancelled ? badge : `<span class="b-meta">${chg}${esc(shortTime(e.start))}–${esc(shortTime(e.end))}${meta ? ` · ${esc(meta)}` : ""}</span>`}
        ${short ? "" : cancelled ? badge : `<span class="b-room">${esc(e.room ?? "")}</span>`}`;
-  const cls = ["block", o.compact && "compact", short && "short", past && "past", cancelled && "cancelled", mark?.note && !cancelled && "noted"];
+  const cls = ["block", o.compact && "compact", short && "short", past && "past", isNow && "now", cancelled && "cancelled", mark?.note && !cancelled && "noted", change && !cancelled && "changed"];
   return `<button class="${cls.filter(Boolean).join(" ")}" data-action="event" data-id="${esc(e.id)}"
-    style="top:${top}px;height:${height}px;left:calc(${p.lane * width}% + 2px);width:calc(${width}% - 4px);--c:${esc(e.color)};--t:${textColorOn(e.color)}"
-    aria-label="${esc(label)}">${inner}</button>`;
+    style="top:${top}px;height:${height}px;left:calc(${p.lane * width}% + 2px);width:calc(${width}% - 4px);${softColor(e.color)}${isNow ? `;--p:${passed}%` : ""}"
+    aria-label="${esc(isNow ? `Teraz: ${label}` : label)}">${inner}</button>`;
 }
 
 export function axis(o: AxisOptions): string {
@@ -295,6 +325,8 @@ export interface PlanContext {
   anim: string; // css class for the transition
   marks: Record<string, Mark>;
   unseen: { count: number; updated: string | null } | null; // changes in the student's classes since the last visit
+  changed: Map<string, RecentChange>; // classes added or changed in recent updates (marked in the plan)
+  fillHours: number; // day view: empty hours added after the last class so the timeline fills the screen (measured in app.ts)
   offline: boolean;
   canInstall: boolean;
   theme: Theme;
@@ -326,7 +358,7 @@ function nextCard(c: PlanContext, state: "finished" | "none", next: string | nul
     <div class="nc-label">Najbliższe zajęcia <span class="nc-when">${esc(longDate(next))} · ${esc(relativeDay(next, c.now.date).toLowerCase())}</span></div>
     <div class="nc-list">${rows}</div>
     <div class="nc-more"><span>${esc(total)}${dayEvents.length > shown.length ? ` (pokazano ${shown.length})` : ""}</span>
-      <span class="nc-open">Pokaż dzień ${ICON.up}</span></div>
+      <span class="nc-open">Pokaż dzień ${ICON.right}</span></div>
   </section>`;
 }
 
@@ -347,15 +379,44 @@ function dayTitle(date: string): string {
   return `<span class="wd-full">${esc(cap(day))}</span><span class="wd-short">${esc(cap(weekdayShort(date)))}</span>, ${esc(rest)}`;
 }
 
+/** Height of an hour in the day view (app.ts uses it to fill the screen). */
+export const DAY_HOUR_PX = 52;
+
+/** Today, one line: the class going on now, or the next one today. Tapping it opens the class. */
+function nowNext(c: PlanContext): string {
+  const today = eventsOn(c.events, c.now.date).filter((e) => !c.marks[e.id]?.cancelled);
+  const now = today.find((e) => toMinutes(e.start) <= c.now.minutes && c.now.minutes < toMinutes(e.end));
+  const next = now ?? today.find((e) => toMinutes(e.start) > c.now.minutes);
+  if (!next) return "";
+  const minutes = toMinutes(next.start) - c.now.minutes;
+  const when = now ? "Teraz" : minutes <= 60 ? `Za ${minutes} min` : `O ${shortTime(next.start)}`;
+  const tail = now ? `do ${shortTime(next.end)}` : "";
+  const parts = [next.room, tail].filter(Boolean).map((x) => esc(x)).join(" · ");
+  return `<button class="nownext" data-action="event" data-id="${esc(next.id)}">
+    <span class="swatch" style="--c:${esc(next.color)}"></span><span class="nn-when">${esc(when)}:</span>
+    <span class="nn-title">${esc(next.title)}</span>${parts ? `<span class="nn-more">${parts}</span>` : ""}</button>`;
+}
+
+/**
+ * A day's own hours: from about an hour before its first class (not before the timetable's usual start) to its
+ * last, plus `fill` empty hours so a short day still fills the screen (app.ts measures them; never adds scrolling).
+ */
+function dayHours(events: ClassEvent[], usual: { from: number; to: number }, fill: number): { from: number; to: number } {
+  if (!events.length) return usual;
+  const from = Math.max(usual.from, Math.floor((Math.min(...events.map((e) => toMinutes(e.start))) - 60) / 60));
+  const last = Math.ceil(Math.max(...events.map((e) => toMinutes(e.end))) / 60);
+  return { from, to: Math.min(Math.max(last, from + 1) + fill, 24) };
+}
+
 export function dayContent(c: PlanContext): string {
   const isToday = c.date === c.now.date;
   const dayEvents = eventsOn(c.events, c.date);
-  const o: AxisOptions = { ...c.hours, hourPx: 52, now: c.now, marks: c.marks };
+  const o: AxisOptions = { ...dayHours(dayEvents, c.hours, c.fillHours), hourPx: DAY_HOUR_PX, now: c.now, marks: c.marks, changed: c.changed };
   let top = "";
   let showAxis = dayEvents.length > 0;
   if (isToday) {
     const t = todayState(c.events, c.now);
-    if (t.state !== "classes") top = nextCard(c, t.state, t.next);
+    top = t.state !== "classes" ? nextCard(c, t.state, t.next) : nowNext(c);
   } else if (!dayEvents.length) {
     const holiday = holidayOn(c.tt.day_notes, c.date);
     top = `<div class="empty-day">${esc(holiday ? holiday : "Brak zajęć")}</div>`;
@@ -389,14 +450,14 @@ function dayTabs(c: PlanContext): string {
 
 function weekGrid(c: PlanContext, compact: boolean): string {
   const days = weekDays(c.date, c.withWeekend);
-  const o: AxisOptions = { ...c.hours, hourPx: compact ? 40 : 52, compact, now: c.now, marks: c.marks };
+  const o: AxisOptions = { ...c.hours, hourPx: compact ? 40 : 52, compact, now: c.now, marks: c.marks, changed: c.changed };
   const heads = days
     .map((d) => {
       const isToday = d === c.now.date;
       const notes = compact ? "" : dayNotes(c, d);
       return `<button class="wk-head${isToday ? " today" : ""}" data-action="open-day" data-date="${d}">
         <span class="wk-day">${compact ? DAY_SHORT[weekday(d)] : esc(longDate(d).split(",")[0])}</span>
-        <span class="wk-date">${compact ? Number(d.slice(8)) : esc(numericDate(d).slice(0, 5))}${isToday ? (compact ? "" : " · dziś") : ""}</span>${notes}</button>`;
+        <span class="wk-date"><span class="wk-num">${compact ? Number(d.slice(8)) : esc(numericDate(d).slice(0, 5))}</span>${isToday && !compact ? " · dziś" : ""}</span>${notes}</button>`;
     })
     .join("");
   const cols = days.map((d) => dayColumn(d, c.events, o)).join("");
@@ -406,19 +467,7 @@ function weekGrid(c: PlanContext, compact: boolean): string {
   </div>`;
 }
 
-function todayStrip(c: PlanContext): string {
-  const t = todayState(c.events, c.now);
-  if (t.state === "classes") return "";
-  const days = weekDays(c.date, c.withWeekend);
-  if (!days.includes(c.now.date) && !(t.next && days.includes(t.next))) return "";
-  const holiday = holidayOn(c.tt.day_notes, c.now.date);
-  const status = t.state === "finished" ? "Zajęcia na dziś zakończone" : holiday ? `Dziś: ${holiday}` : "Dziś brak zajęć";
-  if (!t.next) return `<div class="strip">${esc(status)} · brak kolejnych zajęć w tym planie</div>`;
-  const first = eventsOn(c.events, t.next)[0];
-  return `<button class="strip" data-action="show-day" data-date="${t.next}">${esc(status)} · najbliższe: <strong>${esc(longDate(t.next))}</strong>, ${esc(
-    shortTime(first.start),
-  )} ${esc(first.title)}</button>`;
-}
+
 
 // ---------- plan: layouts ----------
 
@@ -441,18 +490,18 @@ export function phonePlan(c: PlanContext, mode: "day" | "week"): string {
           <div class="weeklabel">${esc(weekRange(monday, days))}${tag ? ` · <span class="rel-today">${tag}</span>` : ""}</div>
           <button class="iconbtn" data-action="next-week" aria-label="Następny tydzień">${ICON.right}</button></nav>`;
   return `<div class="app phone">
-    <header class="topbar">${brand(false)}
+    <header class="topbar">${brand(false, true)}
       <div class="seg seg-mode" role="group" aria-label="Widok">
         <button class="seg-btn${mode === "day" ? " on" : ""}" data-action="mode" data-mode="day" aria-pressed="${mode === "day"}">Dzień</button>
         <button class="seg-btn${mode === "week" ? " on" : ""}" data-action="mode" data-mode="week" aria-pressed="${mode === "week"}">Tydzień</button>
       </div>
       <button class="iconbtn menubtn${c.unseen ? " has-badge" : ""}" data-action="menu" aria-label="Menu${c.unseen ? " (są nowe zmiany)" : ""}">${ICON.menu}</button></header>
     ${bar}
-    <main class="content">${problemBanner(c.entry, c.tt)}${changesBanner(c)}${mode === "day" ? dayContent(c) : todayStrip(c) + weekGrid(c, true)}</main>
+    <main class="content" data-swipe="${mode}">${problemBanner(c.entry, c.tt)}${changesBanner(c)}${mode === "day" ? dayContent(c) : weekGrid(c, true)}</main>
     <footer class="bottombar">
-      <button class="selection" data-action="groups" aria-label="Zmień plan lub grupy">
+      <button class="selection" data-action="groups" aria-label="Zmień plan lub grupy. Twoje grupy: ${esc(groupsSummary(c.tt, c.sel))}">
         <span class="sel-name">${esc(timetableShort(c.tt.id))}</span>
-        <span class="sel-groups">Grupy ${esc(groupsSummary(c.tt, c.sel))}</span></button>
+        <span class="sel-groups">Gr. ${esc(groupsShort(c.tt, c.sel))}</span></button>
       ${statusButton(c.entry, c.at, c.offline, true)}
     </footer>
   </div>`;
@@ -469,7 +518,8 @@ export function desktopPlan(c: PlanContext): string {
         <div class="sel-programme">${esc(programmeName(parseId(c.tt.id)?.programme ?? ""))}</div>
         <div class="sel-plan">${esc(timetableName(c.tt.id))}</div>
         <div class="sel-groups-label">Twoje grupy</div>
-        <div class="sel-groups-value">${esc(groupsSummary(c.tt, c.sel))}</div>
+        <div class="sel-groups-value">${esc(groupsShort(c.tt, c.sel))}</div>
+        <div class="sel-groups-sub">w podziałach na ${esc(c.tt.splits.join(" · "))} grupy</div>
         ${c.sel.optional.length ? `<div class="sel-optional">+ ${esc(c.sel.optional.join(", "))}</div>` : ""}
         <button class="secondary" data-action="groups">Zmień grupy</button>
       </section>
@@ -486,7 +536,6 @@ export function desktopPlan(c: PlanContext): string {
         <button class="iconbtn" data-action="next-week" aria-label="Następny tydzień">${ICON.right}</button>
         ${tag ? `<span class="rel rel-today">${tag}</span>` : `<button class="chip" data-action="today">Dziś</button>`}
       </div>
-      ${todayStrip(c)}
       ${weekGrid(c, false)}
     </main>
   </div>`;
@@ -532,6 +581,7 @@ export function eventSheet(
   mark: Mark | undefined,
   sourceUrl: string,
   wf: { own: string | undefined; planned: string } | null = null,
+  change?: RecentChange,
 ): string {
   const rows: [string, string][] = [
     ["Kiedy", `${longDate(e.date)} (${relativeDay(e.date, now.date).toLowerCase()})`],
@@ -549,6 +599,7 @@ export function eventSheet(
        .map(([k, v]) => `<dt>${esc(k)}</dt><dd${k === "Godziny" && isWf(e) ? " data-wf-hours" : ""}>${esc(v)}</dd>`)
        .join("")}</dl>
      ${e.notes.length ? `<ul class="notes">${e.notes.map((n) => `<li>${esc(noteText(n))}</li>`).join("")}</ul>` : ""}
+     ${change ? changeNote(change) : ""}
      ${wf && isWf(e) ? wfSheetSection(e, wf.own, wf.planned) : ""}
      <section class="mark${cancelled ? " is-cancelled" : ""}" aria-label="Twoje oznaczenie">
        <label class="toggle"><input type="checkbox" data-action="toggle-cancelled" data-id="${esc(e.id)}" ${cancelled ? "checked" : ""}>
@@ -560,6 +611,21 @@ export function eventSheet(
      </section>
      <p class="fine">Coś się nie zgadza? Sprawdź <a href="${esc(sourceUrl)}" target="_blank" rel="noopener">PDF na stronie UR</a> — on obowiązuje.</p>`,
   );
+}
+
+/** In the class sheet: what a recent update changed in this class. */
+function changeNote(ch: RecentChange): string {
+  const b = ch.before;
+  const what =
+    ch.kind === "added"
+      ? "Nowe zajęcia w planie."
+      : ch.kind === "moved" && b
+        ? `Nowa godzina, było: <s>${esc(dayDate(b.date))}, ${esc(shortTime(b.start))}–${esc(shortTime(b.end))}</s>.`
+        : ch.kind === "room" && b
+          ? `Nowa sala, było: <s>${esc(b.room ?? "—")}</s>.`
+          : "Zajęcia zmienione.";
+  return `<div class="info-block change"><strong>Zmiana w planie</strong> (aktualizacja z ${esc(numericDate(ch.updated).slice(0, 5))}). ${what}
+    <button class="text-btn" data-action="changes">Wszystkie zmiany</button></div>`;
 }
 
 /** Parser notes are in English internally; show them in Polish. */
@@ -790,6 +856,32 @@ export function iosInstallSheet(): string {
   );
 }
 
+/**
+ * After an update: what's new, as a centred popup; a tap anywhere closes it. The version big on top, the main
+ * changes with an icon each, the rest as a short list.
+ */
+export function newsPopup(version: string, news: News): string {
+  const [major, minor] = version.split(".");
+  const highlights = news.highlights
+    .map(
+      (h, i) => `<li class="nw-item" style="--i:${i}"><span class="nw-icon">${(ICON as Record<string, string>)[h.icon] ?? ""}</span>
+        <span class="nw-text"><strong>${esc(h.title)}</strong><span>${esc(h.text)}</span></span></li>`,
+    )
+    .join("");
+  const more = news.more.map((m) => `<li>${esc(m)}</li>`).join("");
+  return `<div class="sheet-layer news-layer" data-sheet="news" data-action="close-sheet">
+    <div class="backdrop"></div>
+    <div class="news-card" role="dialog" aria-modal="true" aria-labelledby="news-title" tabindex="-1">
+      <header class="nw-head">
+        <span class="nw-kicker">Nowa wersja · ${esc(news.date)}</span>
+        <h2 id="news-title"><span class="nw-ver">${esc(major)}.${esc(minor)}<span class="nw-demo">demo</span></span><span class="nw-word">Co nowego</span></h2>
+      </header>
+      <ul class="nw-list">${highlights}</ul>
+      ${more ? `<h3 class="nw-more-title">Poza tym</h3><ul class="nw-more" style="--i:${news.highlights.length}">${more}</ul>` : ""}
+      <p class="news-close">Dotknij, aby zamknąć</p>
+    </div></div>`;
+}
+
 // ---------- pages ----------
 
 function page(title: string, body: string): string {
@@ -924,7 +1016,7 @@ export function privacyView(): string {
        <li>wybrany plan, numery grup i Twoja godzina WF (jeśli ją ustawisz),</li>
        <li>widok (dzień albo tydzień) i motyw, jeśli go wybierzesz,</li>
        <li>Twoje oznaczenia „Odwołane” i notatki,</li>
-       <li>ostatnio widziana wersja planu (żeby pokazać, co się zmieniło).</li>
+       <li>ostatnio widziana wersja planu (żeby pokazać, co się zmieniło) i wersja strony (żeby nowości pokazać tylko raz).</li>
      </ul>
      <p>Te dane nie są nigdzie wysyłane. Żeby strona działała bez internetu, przeglądarka przechowuje też kopię strony i planu.</p>
      <p>Wybrany plan, grupy i godzina WF są również w adresie strony (<code>?t=…&amp;gr=…</code>), żeby można było zapisać zakładkę. Kto dostanie od Ciebie ten link (albo kod QR „Z moimi grupami”), zobaczy plan dla tych samych grup (bez Twoich oznaczeń i notatek).</p>

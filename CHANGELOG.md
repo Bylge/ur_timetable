@@ -3,6 +3,44 @@
 Versions follow [Semantic Versioning](https://semver.org/) (see web/README.md, "Versions");
 the format follows [Keep a Changelog](https://keepachangelog.com/). 0.x = demo: anything may still change.
 
+## [0.6.0] - 2026-11-23
+
+### Added
+- "Co nowego": after an update, a popup with what's new (the version big on top, the main changes with icons,
+  the rest as a short list), once, only for students who used the site before (tap anywhere to close; `?nowosci`
+  in the link shows it anyway).
+- The class going on now has a red ring and the part that's over filled in (day and week view).
+- Today, under the date: one line with the class going on now ("Teraz: … · do 11:00") or the next one today
+  ("Za 25 min: …", "O 15:30: …"); tapping it opens the class.
+- Classes added or changed in an update from the last 14 days are marked in the plan ("Nowe", "Nowa godz.",
+  "Nowa sala"; a dot in the narrow week view), and their sheet says what changed, with a link to all changes.
+
+### Changed
+- The day view starts about an hour before the day's first class (not before the usual start), and a short day's
+  timeline is extended with empty hours to the bottom of the screen, never further (no scrolling for nothing).
+  The week view keeps one range for all days.
+- Week grid on the phone: short subject names ("Biochemia", "WF", "KPP"), the room, and the start time when the
+  block is tall enough, instead of the name broken into words; today's date in a pill.
+- Softer colours: each class is a light tint of its subject colour with the colour itself as a stripe, and text in
+  the theme's colour (the PDF's pure cyan and yellow were loud). Pale PDF colours are darkened first, so every
+  subject gets a similar tint.
+- Swiping to the next or previous day (or week) works anywhere in the plan, not only on the timeline.
+- Week view: no "Zajęcia na dziś zakończone" strip (clutter).
+- Phone top bar: "Plan UR · nieoficjalny" (the full name cut "nieoficjalny" short on iPhone).
+- Today's now/next line: with a long title, the room and end time give way first.
+- Groups in the bottom bar: "Gr. 1 · 3 · 2 · 4" instead of "1/2 · 3/3 · …", which read like "1 of 2". Spelled out
+  ("1 z 2 · 3 z 3 · …") where there's room; the desktop sidebar names the splits.
+- "Pokaż dzień" on the next-classes card points to the side (it opens the day; up looked like "fold").
+
+### Fixed
+- Back gesture on "Twoje grupy" and the plan picker: it closed the installed app (or, opened from the menu, did
+  nothing the first time). It now goes back to the plan or the previous screen.
+- Pill buttons (the links at the bottom of the menu, "Cofnij", the links in "Skąd jest ten plan?"): the text sat
+  too high on Android. 0.5.0 lifted it with uneven padding measured on Windows, but every system font (Roboto on
+  Android, Segoe UI on Windows, San Francisco on iPhone) places its letters differently in the line, so a fix for one
+  font is off for another. The text is now centred on the letters themselves (CSS `text-box: trim-both cap
+  alphabetic`), the same on every font; browsers without it get plain even padding.
+
 ## [0.5.0] - 2026-11-04
 
 ### Added

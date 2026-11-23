@@ -51,3 +51,34 @@ export function changeItems(set: ChangeSet, sel: Selection, optionalSubjects: st
 export function myChangeCount(sets: ChangeSet[], sel: Selection, optionalSubjects: string[]): number {
   return sets.reduce((n, s) => n + changeItems(s, sel, optionalSubjects).filter((i) => i.mine).length, 0);
 }
+
+/** How a class changed in a recent update, for the mark on the class itself. */
+export interface RecentChange {
+  kind: "added" | "moved" | "room" | "other";
+  before?: ClassEvent;
+  updated: string; // the update's date (university's "aktualizacja", else publication), ISO
+}
+
+/** Updates this recent (days) mark their classes in the plan. */
+export const RECENT_DAYS = 14;
+
+/**
+ * Classes added or changed in updates published in the last RECENT_DAYS days, by event id (as it is now).
+ * Newer updates win. Removed classes aren't in the plan, so they're only on the Zmiany page.
+ */
+export function recentChanges(changes: ChangeSet[], today: string): Map<string, RecentChange> {
+  const since = new Date(`${today}T00:00:00Z`);
+  since.setUTCDate(since.getUTCDate() - RECENT_DAYS);
+  const from = since.toISOString().slice(0, 10);
+  const out = new Map<string, RecentChange>();
+  for (const set of [...changes].reverse()) {
+    if (set.published_at.slice(0, 10) < from) continue;
+    const updated = set.updated ?? set.published_at.slice(0, 10);
+    for (const e of set.added) out.set(e.id, { kind: "added", updated });
+    for (const c of set.changed) {
+      const kind = c.fields.includes("start") || c.fields.includes("end") ? "moved" : c.fields.includes("room") ? "room" : "other";
+      out.set(c.after.id, { kind, before: c.before, updated });
+    }
+  }
+  return out;
+}

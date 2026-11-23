@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { attends, holidayOn, hourRange, myEvents, notesOn, placeDay, selectionComplete, todayState, validTime, weekDays, weekStart, wfPlanned } from "./schedule";
+import { recentChanges } from "./changes";
+import { groupsShort, groupsSummary, shortTitle } from "./labels";
 import { addDays, ago, longDate, mondayOf, nowInWarsaw, relativeDay, weekRange, weekday } from "./time";
 import type { ClassEvent, Selection, Timetable } from "./types";
 
@@ -150,3 +152,55 @@ describe("WF at the student's own hour", () => {
     expect(validTime(undefined)).toBe(false);
   });
 });
+
+describe("recent changes and group labels", () => {
+  const set = (published: string, added: ClassEvent[], changed: { before: ClassEvent; after: ClassEvent; fields: string[] }[] = []) => ({
+    published_at: `${published}T12:00:00+00:00`,
+    updated: published,
+    sha256: published,
+    previous_sha256: "",
+    added,
+    removed: [],
+    changed,
+  });
+
+  it("marks classes from updates of the last 14 days, the newest update winning", () => {
+    const old = set("2026-10-13", [ev({ id: "old" })]);
+    const recent = set("2026-11-18", [ev({ id: "new" })], [{ before: ev({ id: "x", room: "A" }), after: ev({ id: "x", room: "B" }), fields: ["room"] }]);
+    const latest = set("2026-11-23", [], [{ before: ev({ id: "x", start: "08:00" }), after: ev({ id: "x" }), fields: ["start"] }]);
+    const map = recentChanges([latest, recent, old], "2026-11-25");
+    expect([...map.keys()].sort()).toEqual(["new", "x"]);
+    expect(map.get("new")).toMatchObject({ kind: "added", updated: "2026-11-18" });
+    expect(map.get("x")).toMatchObject({ kind: "moved", updated: "2026-11-23" });
+    expect(recentChanges([recent], "2026-12-03").size).toBe(0); // 15 days later
+  });
+
+  it("writes groups short and spelled out", () => {
+    const tt = { splits: [2, 3, 5] } as unknown as Timetable;
+    const s = { timetable: "x", groups: { "2": 1, "3": 3 }, optional: [] };
+    expect(groupsShort(tt, s)).toBe("1 · 3 · –");
+    expect(groupsSummary(tt, s)).toBe("1 z 2 · 3 z 3 · – z 5");
+  });
+});
+
+describe("short subject names for the week columns", () => {
+  it("shortens the year-1 subjects", () => {
+    const names: Record<string, string> = {
+      "Anatomia człowieka": "Anatomia",
+      "Biochemia ogólna i żywności": "Biochemia",
+      "Chemia żywności": "Chemia",
+      "Fizjologia człowieka": "Fizjologia",
+      "Genetyka z elementami nutrigenomiki": "Genetyka",
+      "Język angielski": "Angielski",
+      "Kwalifikowana I pomoc (KPP)": "KPP",
+      "Mikrobiologia ogólna i żywności": "Mikrobio.",
+      "Parazytologia": "Parazyto.",
+      "Podstawy opieki nad chorym": "Opieka",
+      "SZKOLENIE - obowiązkowe z zakresu praw i obowiązków": "Szkolenie",
+      "Wychowanie fizyczne": "WF",
+      "spotkanie organizacyjne": "Spotkanie",
+    };
+    for (const [title, short] of Object.entries(names)) expect(shortTitle(title)).toBe(short);
+  });
+});
+

@@ -18,6 +18,7 @@ Live at https://bylge.github.io/ur_timetable/ (deployed by `../.github/workflows
 | `src/ics.ts` | `.ics` export in the browser (same UIDs as the Python export; manual marks as "ODWOŁANE: …") |
 | `src/views.ts` | rendering (HTML strings; every value escaped): plan, sheets, menu, Zmiany / O projekcie / Prywatność; `CONTACT_EMAIL` |
 | `src/app.ts` | state, one click handler (`data-action`), swipes, keys; history (the back gesture closes sheets and pages), the page lock behind sheets (`html.sheet-open`), theme, refresh when an installed app comes back |
+| `src/news.ts` | "Co nowego" per version (the popup after an update, shown once to returning students) |
 | `src/qr.ts` | QR codes for the share sheet (the generator is imported on demand) |
 | `src/version.ts` | `VERSION` from `package.json` (set by `vite.config.ts`) |
 | `src/styles.css` | everything except the theme tokens and the skeleton (those are in `index.html`); phone first |
@@ -30,7 +31,8 @@ Live at https://bylge.github.io/ur_timetable/ (deployed by `../.github/workflows
 
 Stored in the browser (`localStorage`, keys `planur:*`): the selection (`selection:v1`), view mode (`mode:v1`),
 theme (`theme:v1`, a plain string because `index.html` reads it before the first paint), manual marks by event id
-(`marks:v1`), last seen version per timetable (`seen:v1`, for the "Plan się zmienił" banner). The service worker
+(`marks:v1`), last seen version per timetable (`seen:v1`, for the "Plan się zmienił" banner), the site version whose
+"Co nowego" was shown (`version:v1`). The service worker
 also keeps `shell-v3` (page, scripts, icons) and `data-v1` (the JSON). Pages have hashes (`#zmiany`, `#o-projekcie`,
 `#prywatnosc`); sheets and pages push a history entry so the phone's back gesture closes them.
 

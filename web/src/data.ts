@@ -182,6 +182,35 @@ export function saveTheme(theme: Theme): void {
   }
 }
 
+const VERSION_KEY = "planur:version:v1";
+
+
+/** The site version whose "Co nowego" the student has seen (null: never stored). */
+export function loadSeenVersion(): string | null {
+  try {
+    return localStorage.getItem(VERSION_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function saveSeenVersion(version: string): void {
+  try {
+    localStorage.setItem(VERSION_KEY, version);
+  } catch {
+    // ignore
+  }
+}
+
+/** A choice saved by an earlier visit (not one that only came with the link): the student used the site before. */
+export function hasStoredSelection(): boolean {
+  try {
+    return localStorage.getItem(STORAGE_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
+
 /** Everything this site keeps in the browser: every planur:* key (selection, view, theme, marks, seen versions). */
 export function clearAllStored(): void {
   try {

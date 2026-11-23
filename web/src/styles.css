@@ -177,7 +177,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .nc-more { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 13.5px; }
 .nc-open { display: inline-flex; align-items: center; gap: 4px; color: var(--accent); font-weight: 650; }
 .nc-open svg { width: 18px; height: 18px; animation: nudge 1.8s ease-in-out 3; }
-@keyframes nudge { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes nudge { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(3px); } }
 
 /* ---------- time axis and blocks ---------- */
 .timeline, .wk-body { display: grid; grid-template-columns: 42px 1fr; padding: 8px 0 12px; }
@@ -195,18 +195,28 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .block {
   position: absolute; z-index: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; overflow: hidden;
   text-align: left; border: 0; border-radius: 8px; padding: 5px 7px 5px 9px;
-  background: var(--c); color: var(--t); font-size: 12px; line-height: 1.25;
-  box-shadow: inset 3px 0 0 rgb(0 0 0 / 16%);
+  /* Softer than the PDF's colours (pure cyan, yellow): a tint of the subject colour, the colour itself as a stripe
+     on the left, text in the theme's colour (so it reads the same on every subject, light or dark mode). */
+  --tint: color-mix(in srgb, var(--c) 30%, var(--surface));
+  background: var(--tint); color: var(--text); font-size: 12px; line-height: 1.25;
+  box-shadow: inset 4px 0 0 var(--c);
 }
 .block:hover { filter: brightness(.97); }
+/* dark mode: one amount for every colour (a pale tint would be too bright under light text) */
+:root[data-theme="dark"] .block { --tint: color-mix(in srgb, var(--c) 34%, var(--surface)); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .block { --tint: color-mix(in srgb, var(--c) 34%, var(--surface)); }
+}
 .block.past { opacity: .5; }
 .b-title { font-weight: 700; font-size: 13px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .b-meta { opacity: .85; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .b-room { opacity: .85; font-weight: 600; }
 .block.short { flex-direction: row; align-items: center; gap: 6px; padding-top: 2px; padding-bottom: 2px; }
 .block.short .b-title { -webkit-line-clamp: 1; font-size: 12px; }
-.block.compact { padding: 3px 4px 3px 6px; }
-.block.compact .b-title { display: block; width: 100%; font-size: 10.5px; font-weight: 650; }
+.block.compact { padding: 3px 3px 3px 7px; gap: 0; box-shadow: inset 3px 0 0 var(--c); }
+.block.compact .b-title { display: block; width: 100%; font-size: 10.5px; font-weight: 700; letter-spacing: -.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.block.compact .b-room { display: block; width: 100%; font-size: 10px; font-weight: 600; opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.block.compact .b-time { font-size: 10px; opacity: .6; font-variant-numeric: tabular-nums; margin-top: auto; }
 .b-word { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* week grid */
@@ -265,6 +275,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .sel-plan { font-weight: 650; margin-bottom: 10px; }
 .sel-groups-label { font-size: 13px; color: var(--muted); }
 .sel-groups-value { font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums; margin-bottom: 4px; }
+.sel-groups-sub { font-size: 12.5px; color: var(--muted); margin: -2px 0 8px; }
 .sel-optional { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
 .sel-card .secondary { margin-top: 8px; }
 .spacer { flex: 1; }
@@ -319,7 +330,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 
 /* ---------- marks (manual "Odwołane") ---------- */
 .block.cancelled {
-  background: repeating-linear-gradient(135deg, var(--c) 0 7px, color-mix(in srgb, var(--c) 55%, var(--surface)) 7px 14px);
+  background: repeating-linear-gradient(135deg, var(--tint) 0 7px, var(--surface) 7px 14px);
   box-shadow: inset 3px 0 0 var(--problem);
 }
 .block.cancelled .b-title { text-decoration: line-through; text-decoration-thickness: 2px; }
@@ -332,7 +343,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .b-note { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .block.noted::after {
   content: ""; position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 50%;
-  background: var(--t); opacity: .7;
+  background: var(--text); opacity: .55;
 }
 .nc-row.cancelled .nc-title, .nc-row.cancelled .nc-time { text-decoration: line-through; color: var(--muted); }
 .mark { margin: 16px -4px 10px; padding: 6px 12px 4px; border-radius: var(--radius); background: var(--surface-2); }
@@ -388,11 +399,17 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .sidenav .mi-icon svg { width: 17px; height: 17px; }
 .linkrow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 .link-btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  border: 1px solid var(--line-strong); background: transparent; border-radius: 999px; min-height: 36px;
-  /* more room below than above: the system fonts' line box puts the letters a little low in a pill */
-  padding: 3px 14px 7px; line-height: 1.2;
+  /* Centred on the letters, not on the font's line box: each system font (Roboto on Android, Segoe UI on Windows,
+     San Francisco on iPhone) puts its letters at a different height in the line box, so equal padding looks off
+     differently on each. text-box trims the box to cap height and baseline. It works only in a block container
+     (not a flex one), hence inline-block. Without text-box support: plain padding (close, not exact). */
+  display: inline-block; text-align: center; vertical-align: middle;
+  border: 1px solid var(--line-strong); background: transparent; border-radius: 999px;
+  padding: 12px 14px; line-height: 1.2; text-box: trim-both cap alphabetic;
   color: var(--accent); font-weight: 600; font-size: 14px;
+}
+@supports not (text-box: trim-both cap alphabetic) {
+  .link-btn { padding: 8px 14px; }
 }
 .steps { margin: 8px 0 14px; padding-left: 20px; display: grid; gap: 6px; }
 
@@ -456,7 +473,10 @@ a.menu-item { color: inherit; text-decoration: none; }
 .menu-more .mi-icon svg { width: 18px; height: 18px; }
 .menu-more .mi-label { font-weight: 550; }
 .menu-links { margin: 10px 8px 4px; gap: 6px; }
-.menu-links .link-btn { padding: 2px 12px 6px; min-height: 34px; font-size: 13.5px; }
+.menu-links .link-btn { padding: 11px 12px; font-size: 13.5px; }
+@supports not (text-box: trim-both cap alphabetic) {
+  .menu-links .link-btn { padding: 7px 12px; }
+}
 
 /* ---------- share: QR code and link ---------- */
 .seg-share { display: flex; width: 100%; }
@@ -478,8 +498,9 @@ a.menu-item { color: inherit; text-decoration: none; }
 .wf-row { display: flex; align-items: center; gap: 10px; }
 .wf-time { width: auto; min-width: 0; flex: 0 1 8.5em; font-variant-numeric: tabular-nums; }
 .wf-end { color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.wf-reset { margin-left: auto; flex: none; gap: 5px; }
-.wf-reset svg { width: 16px; height: 16px; }
+.wf-reset { margin-left: auto; flex: none; }
+/* the icon sits on the letters' middle; negative margins keep it from making the trimmed line taller */
+.wf-reset svg { width: 16px; height: 16px; vertical-align: 1.5px; margin: -4px 5px -4px 0; }
 .wf-reset[hidden] { display: none; }
 .wf { margin: 16px -4px 10px; padding: 10px 12px 4px; border-radius: var(--radius); background: var(--accent-soft); }
 .wf h3 { margin: 0 0 8px; font-size: 15px; }
@@ -508,3 +529,89 @@ a.menu-item { color: inherit; text-decoration: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ---------- today: the class now or next (one line under the date) ---------- */
+.nownext {
+  display: flex; align-items: center; gap: 8px; width: calc(100% - 8px); margin: -4px 4px 10px; padding: 0;
+  border: 0; background: none; text-align: left; font-size: 14px; color: var(--text); min-height: 28px;
+}
+.nownext .swatch { width: 4px; height: 18px; align-self: center; flex: none; }
+.nn-when { font-weight: 700; color: var(--accent); white-space: nowrap; }
+.nn-when { flex: none; }
+/* long titles: the room and end time give way first (shrink faster), the title keeps most of its room */
+.nn-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 4em; flex: 0 1 auto; }
+.nn-more { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 4 auto; }
+.nn-more::before { content: "· "; }
+
+/* ---------- recent changes: a mark on the class, a note in its sheet ---------- */
+.b-chg {
+  display: inline-block; margin-right: 5px; padding: 0 5px; border-radius: 4px; font-size: 10.5px; font-weight: 750;
+  letter-spacing: .02em; text-transform: uppercase; background: var(--warn-bg); color: var(--warn); vertical-align: 1px;
+}
+.block.changed.compact::before {
+  /* light centre, dark ring: stands out on any subject colour (a plain --warn dot vanished on mustard) */
+  content: ""; position: absolute; bottom: 4px; right: 4px; width: 10px; height: 10px; border-radius: 50%;
+  background: #fff4e0; border: 2.5px solid #a8660b; box-sizing: border-box;
+}
+.block.changed.compact.noted::after { right: 15px; }
+.info-block.change { background: var(--warn-bg); color: var(--text); }
+.info-block.change strong { color: var(--warn); }
+.info-block.change .text-btn { margin-left: 2px; }
+
+/* ---------- "Co nowego": a small centred popup, a tap anywhere closes it ---------- */
+.news-layer { align-items: center; justify-items: center; padding: 20px; cursor: pointer; }
+.news-card {
+  position: relative; width: min(420px, 100%); max-height: calc(100dvh - 40px); overflow-y: auto; padding: 0 0 14px;
+  border-radius: 20px; background: var(--surface); box-shadow: var(--shadow-l); outline: none;
+}
+.news-close { margin: 14px 0 0; text-align: center; font-size: 12.5px; color: var(--muted); }
+.nw-head {
+  padding: 20px 22px 18px; color: #fff; position: relative; overflow: hidden;
+  background: radial-gradient(120% 140% at 100% 0%, #6f8cff 0%, transparent 55%), linear-gradient(135deg, #2b59d1, #5b3fd0);
+}
+.nw-head::after {
+  /* a few soft circles for some life */
+  content: ""; position: absolute; right: -30px; bottom: -50px; width: 160px; height: 160px; border-radius: 50%;
+  background: rgb(255 255 255 / 10%); box-shadow: -70px -40px 0 -40px rgb(255 255 255 / 12%);
+}
+.nw-kicker { font-size: 12.5px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; opacity: .85; }
+.nw-head h2 { display: grid; margin: 4px 0 0; line-height: 1; }
+.nw-ver { font-size: 56px; font-weight: 800; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.nw-demo {
+  display: inline-block; margin-left: 10px; vertical-align: 12px; font-size: 14px; font-weight: 750; letter-spacing: .06em;
+  text-transform: uppercase; padding: 3px 9px; border-radius: 999px; background: rgb(255 255 255 / 22%);
+}
+.nw-word { font-size: 20px; font-weight: 650; margin-top: 6px; letter-spacing: -.01em; }
+.nw-list { list-style: none; margin: 0; padding: 14px 18px 2px; display: grid; gap: 12px; }
+.nw-item { display: flex; gap: 12px; align-items: flex-start; animation: rise .35s ease both; animation-delay: calc(var(--i) * 70ms + 120ms); }
+.nw-icon {
+  display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 12px;
+  background: var(--accent-soft); color: var(--accent);
+}
+.nw-text { display: grid; gap: 2px; line-height: 1.35; }
+.nw-text strong { font-size: 15.5px; }
+.nw-text span { color: var(--muted); font-size: 14px; }
+.nw-more-title { margin: 14px 22px 4px; font-size: 12.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.nw-more {
+  margin: 0 22px; padding-left: 18px; display: grid; gap: 4px; font-size: 13.5px; color: var(--text); line-height: 1.4;
+  animation: rise .35s ease both; animation-delay: calc(var(--i) * 70ms + 120ms);
+}
+.nw-more li::marker { color: var(--accent); }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+.news-layer.enter .backdrop { animation: fade .2s ease; }
+.news-layer.enter .news-card { animation: pop .22s ease; }
+.news-layer.leaving .news-card { animation: pop-out .15s ease forwards; }
+
+/* ---------- a class going on now: a ring, and the part that's over filled in ---------- */
+.block.now {
+  z-index: 2;
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--c) 55%, var(--surface)) var(--p), var(--tint) var(--p));
+  box-shadow: inset 4px 0 0 var(--c), 0 0 0 2px var(--now);
+}
+.block.compact.now { box-shadow: inset 3px 0 0 var(--c), 0 0 0 2px var(--now); }
+/* today's date in the narrow week header */
+.week-compact .wk-head.today .wk-num {
+  display: inline-block; min-width: 28px; padding: 1px 6px; border-radius: 999px; background: var(--accent); color: var(--accent-fg);
+}
+
+
