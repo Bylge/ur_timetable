@@ -1,5 +1,46 @@
 [
  {
+  "published_at": "2026-11-23T14:24:13+00:00",
+  "updated": "2026-11-18",
+  "sha256": "2151c3c97f42f73dfe55ee8f5129d7dddc51a2fdc0bb55f1d73c7022cefbf76d",
+  "previous_sha256": "24138ace6ddf1e76d2c6656770d58a0ac117459a696557ea4fecbeb47d6bfe6a",
+  "added": [],
+  "removed": [],
+  "changed": [
+   {
+    "before": {
+     "id": "7ed327c31d2b",
+     "date": "2026-11-25",
+     "start": "17:45",
+     "end": "19:15",
+     "title": "Fizjologia człowieka",
+     "kind": "lecture",
+     "room": "A1.MAŁA AULA",
+     "partition": null,
+     "group": null,
+     "color": "#bf8f00",
+     "notes": []
+    },
+    "after": {
+     "id": "7ed327c31d2b",
+     "date": "2026-11-25",
+     "start": "17:45",
+     "end": "19:15",
+     "title": "Fizjologia człowieka",
+     "kind": "lecture",
+     "room": "MS Teams",
+     "partition": null,
+     "group": null,
+     "color": "#bf8f00",
+     "notes": []
+    },
+    "fields": [
+     "room"
+    ]
+   }
+  ]
+ },
+ {
   "published_at": "2026-11-18T12:56:35+00:00",
   "updated": "2026-11-18",
   "sha256": "24138ace6ddf1e76d2c6656770d58a0ac117459a696557ea4fecbeb47d6bfe6a",

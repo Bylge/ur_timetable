@@ -4,11 +4,11 @@
  "label": "Dietetyka, studia I stopnia stacjonarne, rok 1",
  "title": "ROZKŁAD ZAJĘĆ - DIETETYKA - ROK 1 - SEMESTR 1 - STUDIA I STOPNIA - TRYB STACJONARNY - 2026/2027",
  "source": {
-  "url": "https://www.ur.edu.pl/files/user_directory/300/Dietetyka/Rozk%C5%82ady%20zaj%C4%99%C4%87/Studia%20I%20stopnia/Dietetyka%201%20rok%20I%20st%20ST%20%2819.11.2026%29.pdf",
+  "url": "https://www.ur.edu.pl/files/user_directory/300/Dietetyka/Rozk%C5%82ady%20zaj%C4%99%C4%87/Studia%20I%20stopnia/Dietetyka%201%20rok%20I%20st%20ST%20%2823.11.2026%29.pdf",
   "updated": "2026-11-18",
-  "sha256": "24138ace6ddf1e76d2c6656770d58a0ac117459a696557ea4fecbeb47d6bfe6a",
+  "sha256": "2151c3c97f42f73dfe55ee8f5129d7dddc51a2fdc0bb55f1d73c7022cefbf76d",
   "label": "Dietetyka, studia I stopnia stacjonarne, rok 1",
-  "published_at": "2026-11-18T12:56:35+00:00"
+  "published_at": "2026-11-23T14:24:13+00:00"
  },
  "splits": [
   2,
@@ -2398,7 +2398,7 @@
    "end": "19:15",
    "title": "Fizjologia człowieka",
    "kind": "lecture",
-   "room": "A1.MAŁA AULA",
+   "room": "MS Teams",
    "partition": null,
    "group": null,
    "color": "#bf8f00",
