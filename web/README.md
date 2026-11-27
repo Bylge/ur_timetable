@@ -16,7 +16,9 @@ Live at https://bylge.github.io/ur_timetable/ (deployed by `../.github/workflows
 | `src/data.ts` | loading data (picks up the early downloads); the student's choice in `localStorage` and in the link (`?t=…&gr=2:1,3:2&opt=…&wf=1030`); marks, seen versions, theme |
 | `src/changes.ts` | which updates the student hasn't seen; each change as an item, own groups first |
 | `src/ics.ts` | `.ics` export in the browser (same UIDs as the Python export; manual marks as "ODWOŁANE: …") |
-| `src/views.ts` | rendering (HTML strings; every value escaped): plan, sheets, menu, Zmiany / O projekcie / Prywatność; `CONTACT_EMAIL` |
+| `src/plan.ts` | the plan screen: sticky header (status line, the date or month, the day picker or the week's day names, "Następne zajęcia" after today's classes), the Dzień / Tydzień / Terminy views, the pill (on a computer: the switch in the header), the menu, the Terminy sheets and form |
+| `src/terms.ts` | Terminy: the student's own exams, tests, credits and assignments (stored on the device), sorting, "za 8 dni" |
+| `src/views.ts` | shared rendering (HTML strings; every value escaped): class blocks and the time axis, sheets (class, info, share, `.ics`, install, "Co nowego"), the picker and groups screens, Zmiany / O projekcie / Prywatność; `CONTACT_EMAIL` |
 | `src/app.ts` | state, one click handler (`data-action`), swipes, keys; history (the back gesture closes sheets and pages), the page lock behind sheets (`html.sheet-open`), theme, refresh when an installed app comes back |
 | `src/news.ts` | "Co nowego" per version (the popup after an update, shown once to returning students) |
 | `src/qr.ts` | QR codes for the share sheet (the generator is imported on demand) |
@@ -29,7 +31,8 @@ Live at https://bylge.github.io/ur_timetable/ (deployed by `../.github/workflows
 | `vite.config.ts` | relative base, the version define, and a small plugin that inlines the CSS into `index.html` |
 | `playwright.config.ts`, `e2e/screens.spec.ts` | Playwright on the local Chrome: phone (Redmi Note 14 in Chrome, 393×770) and desktop (1366×900), against a fresh build on :4173; review screenshots plus layout and behaviour checks. `e2e/fixtures/changes.json` is the real 02.10 → 13.10 diff |
 
-Stored in the browser (`localStorage`, keys `planur:*`): the selection (`selection:v1`), view mode (`mode:v1`),
+Stored in the browser (`localStorage`, keys `planur:*`): the selection (`selection:v1`), the last view (`tab:v1`: day,
+week or terms; replaces `mode:v1`), Terminy (`terms:v1`),
 theme (`theme:v1`, a plain string because `index.html` reads it before the first paint), manual marks by event id
 (`marks:v1`), last seen version per timetable (`seen:v1`, for the "Plan się zmienił" banner), the site version whose
 "Co nowego" was shown (`version:v1`). The service worker

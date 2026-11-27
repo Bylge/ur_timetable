@@ -9,7 +9,43 @@ const SEEN_KEY = "planur:seen:v1";
 // Read by the script in index.html before the first paint, so it's a plain string, not JSON.
 const THEME_KEY = "planur:theme:v1";
 
-export type Theme = "auto" | "light" | "dark";
+export type Theme = "auto" | "light" | "dark" | "roz" | "slonce" | "polnoc";
+
+/**
+ * The themes in the menu: name, and the colours its tile previews (background, a surface, the accent). The
+ * colours themselves are tokens in index.html (:root[data-theme=…]); "auto" follows the phone's light or dark mode.
+ */
+export const THEMES: { id: Theme; name: string; bg: string; surface: string; accent: string; dark: boolean }[] = [
+  { id: "auto", name: "Auto", bg: "", surface: "", accent: "", dark: false },
+  { id: "light", name: "Jasny", bg: "#f5f6f8", surface: "#ffffff", accent: "#2b59d1", dark: false },
+  { id: "dark", name: "Ciemny", bg: "#0f1115", surface: "#20242c", accent: "#7d9dff", dark: true },
+  { id: "roz", name: "Róż", bg: "#fde4ee", surface: "#fff5f9", accent: "#e0428a", dark: false },
+  { id: "slonce", name: "Słońce", bg: "#fff8ec", surface: "#ffffff", accent: "#e8590c", dark: false },
+  { id: "polnoc", name: "Północ", bg: "#0a0f1f", surface: "#1a2440", accent: "#8f7dff", dark: true },
+];
+
+/** Which view the plan opens on (the last one used): Dzień, Tydzień or Terminy. */
+export type Tab = "day" | "week" | "terms";
+const TAB_KEY = "planur:tab:v1";
+const OLD_MODE_KEY = "planur:mode:v1"; // before 0.7.0: "day" or "week"
+
+export function loadTab(): Tab | null {
+  try {
+    const t = localStorage.getItem(TAB_KEY) ?? localStorage.getItem(OLD_MODE_KEY);
+    return t === "day" || t === "week" || t === "terms" ? t : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveTab(tab: Tab): void {
+  try {
+    localStorage.setItem(TAB_KEY, tab);
+    localStorage.removeItem(OLD_MODE_KEY);
+  } catch {
+    // ignore
+  }
+}
 
 // index.html starts the downloads (index, the remembered timetable) before this script has even arrived;
 // each early request is used once, later loads fetch again.
@@ -167,7 +203,7 @@ export function saveSeen(seen: Record<string, string>): void {
 export function loadTheme(): Theme {
   try {
     const t = localStorage.getItem(THEME_KEY);
-    return t === "light" || t === "dark" ? t : "auto";
+    return THEMES.some((x) => x.id === t) ? (t as Theme) : "auto";
   } catch {
     return "auto";
   }

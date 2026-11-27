@@ -3,6 +3,37 @@
 Versions follow [Semantic Versioning](https://semver.org/) (see web/README.md, "Versions");
 the format follows [Keep a Changelog](https://keepachangelog.com/). 0.x = demo: anything may still change.
 
+## [0.7.0] - 2026-11-27
+
+A new layout: the plan's own views, Terminy and themes.
+
+### Added
+- Terminy: the student's own exams, tests (kolokwia), credits (zaliczenia) and assignments, stored only on the device.
+  Add, edit, delete (two taps); the next one big with how many days are left, the rest by month, past ones folded
+  away, an empty state that explains it. In the plan: a dot in the day picker, a row on the day, a line in the week.
+- Themes: Auto, Jasny, Ciemny, plus Róż (pastel pink), Słońce (bright, warm) and Północ (dark navy), chosen in the
+  menu with a small preview each.
+- After today's classes (or on a free day): the next class day, small, under the day picker; tapping it opens that day.
+- Back to today (day view on another day) or to this week (week view on another week): a small calendar icon next to
+  the menu button.
+- Motion: a swipe moves the plan with the finger and bounces back if let go early; the pill's highlight slides to
+  the chosen view; buttons give a little when pressed.
+
+### Changed
+- Layout: Dzień, Tydzień and Terminy are separate views, switched with a pill at the bottom of the screen (on a
+  computer: in the header). The header (status line, the date or month, the day picker or the week's day names)
+  stays on top; only the plan scrolls. The bottom bar is gone: the plan, groups and status moved to the menu.
+- Week: the arrows sit by the day names, the title is the month ("Listopad – Grudzień" across two months), smaller
+  text in the blocks; the hours shrink or grow to fill the phone's screen. On a computer the week has full blocks.
+- Menu: the plan card (groups, WF hour, status) on top, the themes, the app's actions; "Skąd jest ten plan?",
+  "O projekcie" and "Prywatność" and the version at the bottom.
+- The "Teraz / Za 25 min" line under the date is gone (the red line and the ring on the class show it).
+- More room everywhere; the big date shortens the weekday ("Pon.") only when it doesn't fit.
+- The day picker's arrows go a day at a time (past Friday to Monday); the week's arrows a week.
+- Swiping works anywhere on the screen, also on an empty day's blank space.
+- On a computer the three views have one width: switching doesn't move the header.
+- "Co nowego" shows the 0.7.0 notes.
+
 ## [0.6.1] - 2026-11-27
 
 ### Changed

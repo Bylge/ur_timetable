@@ -4,46 +4,16 @@
 import type { ChangeSet, ClassEvent, IndexEntry, Mark, Selection, Timetable } from "./types";
 import { changeItems, type ChangeItem, type RecentChange } from "./changes";
 import { VERSION } from "./version";
-import type { Theme } from "./data";
 import type { News } from "./news";
-import {
-  endAfter,
-  eventsOn,
-  holidayOn,
-  isWf,
-  notesOn,
-  placeDay,
-  selectionComplete,
-  sentenceCase,
-  todayState,
-  weekDays,
-  weekStart,
-  wfPlanned,
-  type Placed,
-} from "./schedule";
-import {
-  DAY_SHORT,
-  addDays,
-  dayDate,
-  ago,
-  longDate,
-  mondayOf,
-  numericDate,
-  relativeDay,
-  shortTime,
-  toMinutes,
-  weekRange,
-  weekday,
-  weekdayShort,
-  type Now,
-} from "./time";
-import { groupsShort, groupsSummary, shortTitle, kindLabel, kindShort, plural, programmeName, parseId, sourceStatus, timetableName, timetableShort } from "./labels";
+import { endAfter, eventsOn, isWf, placeDay, selectionComplete, wfPlanned, type Placed } from "./schedule";
+import { addDays, dayDate, ago, longDate, numericDate, relativeDay, shortTime, toMinutes, type Now } from "./time";
+import { shortTitle, kindLabel, kindShort, plural, programmeName, parseId, sourceStatus, timetableName, timetableShort } from "./labels";
 
 export function esc(value: unknown): string {
   return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
 
-const ICON = {
+export const ICON = {
   left: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>',
   right: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>',
   up: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>',
@@ -72,6 +42,11 @@ const ICON = {
  * its tint matches the others instead of being nearly white.
  */
 export function softColor(hex: string): string {
+  return `--c:${stripeColor(hex)}`;
+}
+
+/** The subject colour as used everywhere in the app (stripes, dots): a pale PDF colour darkened to show on white. */
+export function stripeColor(hex: string): string {
   const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
@@ -81,7 +56,7 @@ export function softColor(hex: string): string {
   let h = 0;
   if (d) h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
   const hue = Math.round((h * 60 + 360) % 360);
-  return `--c:hsl(${hue} ${Math.round(sat * 100)}% ${Math.round(Math.min(l, 0.62) * 100)}%)`;
+  return `hsl(${hue} ${Math.round(sat * 100)}% ${Math.round(Math.min(l, 0.62) * 100)}%)`;
 }
 
 export function textColorOn(hex: string): string {
@@ -115,23 +90,7 @@ function demoPill(): string {
   return `<span class="demo-pill" title="Wersja demonstracyjna ${esc(VERSION)}">demo</span>`;
 }
 
-export function statusButton(entry: IndexEntry, at: Date, offline = false, demo = false): string {
-  const s = sourceStatus(entry, at);
-  const line = offline ? `Offline · ${s.line.replace(/ · sprawdzono .*$/, "")}` : s.line;
-  const level = offline ? "offline" : s.level;
-  return `<button class="status status-${level}" data-action="info" aria-label="Informacje o źródle planu: ${esc(line)}">
-    <span class="dot" aria-hidden="true"></span><span class="status-text">${esc(line)}</span>${demo ? demoPill() : ""}</button>`;
-}
 
-/** Shown on the plan when the timetable changed (in the student's classes) since their last visit. */
-function changesBanner(c: PlanContext): string {
-  if (!c.unseen) return "";
-  const when = c.unseen.updated ? ` (aktualizacja ${numericDate(c.unseen.updated).slice(0, 5)})` : "";
-  return `<div class="banner banner-changes" role="status">
-    <button class="banner-main" data-action="changes"><strong>Plan się zmienił${esc(when)}</strong>
-      <span>${esc(plural(c.unseen.count, "zmiana", "zmiany", "zmian"))} w Twoich zajęciach · Zobacz</span></button>
-    <button class="iconbtn banner-close" data-action="dismiss-changes" aria-label="Ukryj powiadomienie o zmianach">${ICON.close}</button></div>`;
-}
 
 /**
  * Why the status is red. A new PDF that couldn't be published (pending_sha256 is set) or just a failed
@@ -241,7 +200,7 @@ export function groupsView(tt: Timetable, draft: Selection, count: number, canGo
 
 // ---------- time axis ----------
 
-interface AxisOptions {
+export interface AxisOptions {
   from: number; // hour
   to: number;
   hourPx: number;
@@ -310,240 +269,19 @@ export function dayColumn(date: string, events: ClassEvent[], o: AxisOptions): s
   return `<div class="col${o.now?.date === date ? " col-today" : ""}" data-date="${date}" style="height:${(o.to - o.from) * o.hourPx}px">${lines}${blocks}${nowLine}</div>`;
 }
 
-// ---------- plan: day (phone) ----------
-
-export interface PlanContext {
-  tt: Timetable;
-  entry: IndexEntry;
-  sel: Selection;
-  events: ClassEvent[]; // the student's events
-  now: Now;
-  at: Date;
-  date: string; // selected day
-  hours: { from: number; to: number };
-  withWeekend: boolean;
-  anim: string; // css class for the transition
-  marks: Record<string, Mark>;
-  unseen: { count: number; updated: string | null } | null; // changes in the student's classes since the last visit
-  changed: Map<string, RecentChange>; // classes added or changed in recent updates (marked in the plan)
-  weekHourPx: number; // phone week grid: height of an hour, shrunk a little when that avoids scrolling (app.ts)
-  fillHours: number; // day view: empty hours added after the last class so the timeline fills the screen (measured in app.ts)
-  offline: boolean;
-  canInstall: boolean;
-  theme: Theme;
-}
-
-function nextCard(c: PlanContext, state: "finished" | "none", next: string | null): string {
-  const holiday = holidayOn(c.tt.day_notes, c.now.date);
-  const status =
-    state === "finished"
-      ? "Zajęcia na dziś zakończone"
-      : holiday
-        ? `Dziś: ${holiday}`
-        : `Dziś brak zajęć · ${longDate(c.now.date).split(",")[0]}`;
-  if (!next) {
-    return `<section class="nextcard"><div class="nc-status">${esc(status)}</div><div class="nc-label">Brak kolejnych zajęć w tym planie.</div></section>`;
-  }
-  const dayEvents = eventsOn(c.events, next);
-  const shown = dayEvents.slice(0, 5);
-  const rows = shown
-    .map(
-      (e) => `<div class="nc-row${c.marks[e.id]?.cancelled ? " cancelled" : ""}"><span class="swatch" style="--c:${esc(e.color)}"></span>
-        <span class="nc-time">${esc(shortTime(e.start))}–${esc(shortTime(e.end))}</span>
-        <span class="nc-title">${esc(e.title)}</span>${e.room ? `<span class="nc-room">${esc(e.room)}</span>` : ""}</div>`,
-    )
-    .join("");
-  const total = dayEvents.length === 1 ? "Jedyne zajęcia tego dnia" : `Razem ${zajecia(dayEvents.length)} tego dnia`;
-  return `<section class="nextcard" data-action="show-day" data-date="${next}" role="button" tabindex="0" aria-label="Pokaż najbliższy dzień z zajęciami: ${esc(longDate(next))}">
-    <div class="nc-status">${esc(status)}</div>
-    <div class="nc-label">Najbliższe zajęcia <span class="nc-when">${esc(longDate(next))} · ${esc(relativeDay(next, c.now.date).toLowerCase())}</span></div>
-    <div class="nc-list">${rows}</div>
-    <div class="nc-more"><span>${esc(total)}${dayEvents.length > shown.length ? ` (pokazano ${shown.length})` : ""}</span>
-      <span class="nc-open">Pokaż dzień ${ICON.right}</span></div>
-  </section>`;
-}
-
-/** Notes shown above a day: the holiday/break name once, plus cancellations and other notes. */
-function dayNotes(c: PlanContext, date: string): string {
-  const holiday = holidayOn(c.tt.day_notes, date);
-  const others = notesOn(c.tt.day_notes, date).filter((n) => n.kind !== "holiday");
-  return [
-    holiday ? `<div class="daynote daynote-holiday">${esc(holiday)}</div>` : "",
-    ...others.map((n) => `<div class="daynote daynote-${n.kind}">${esc(sentenceCase(n.text))}</div>`),
-  ].join("");
-}
-
-/** "Poniedziałek, 26 października", with a short weekday ("Pon.") for when the header doesn't fit in one line. */
-function dayTitle(date: string): string {
-  const [day, rest] = longDate(date).split(", ");
-  const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
-  return `<span class="wd-full">${esc(cap(day))}</span><span class="wd-short">${esc(cap(weekdayShort(date)))}</span>, ${esc(rest)}`;
-}
-
-/** Height of an hour in the day view (app.ts uses it to fill the screen). */
-export const DAY_HOUR_PX = 52;
-/** Phone week grid: usual height of an hour, and the least it may shrink to so the week fits without scrolling. */
-export const WEEK_HOUR_PX = 40;
-export const WEEK_MIN_HOUR_PX = 32;
-
-/** Today, one line: the class going on now, or the next one today. Tapping it opens the class. */
-function nowNext(c: PlanContext): string {
-  const today = eventsOn(c.events, c.now.date).filter((e) => !c.marks[e.id]?.cancelled);
-  const now = today.find((e) => toMinutes(e.start) <= c.now.minutes && c.now.minutes < toMinutes(e.end));
-  const next = now ?? today.find((e) => toMinutes(e.start) > c.now.minutes);
-  if (!next) return "";
-  const minutes = toMinutes(next.start) - c.now.minutes;
-  const when = now ? "Teraz" : minutes <= 60 ? `Za ${minutes} min` : `O ${shortTime(next.start)}`;
-  const tail = now ? `do ${shortTime(next.end)}` : "";
-  const parts = [next.room, tail].filter(Boolean).map((x) => esc(x)).join(" · ");
-  return `<button class="nownext" data-action="event" data-id="${esc(next.id)}">
-    <span class="swatch" style="--c:${esc(next.color)}"></span><span class="nn-when">${esc(when)}:</span>
-    <span class="nn-title">${esc(next.title)}</span>${parts ? `<span class="nn-more">${parts}</span>` : ""}</button>`;
-}
-
-/**
- * A day's own hours: from about an hour before its first class (not before the timetable's usual start) to its
- * last, plus `fill` empty hours so a short day still fills the screen (app.ts measures them; never adds scrolling).
- */
-function dayHours(events: ClassEvent[], usual: { from: number; to: number }, fill: number): { from: number; to: number } {
-  if (!events.length) return usual;
-  const from = Math.max(usual.from, Math.floor((Math.min(...events.map((e) => toMinutes(e.start))) - 60) / 60));
-  const last = Math.ceil(Math.max(...events.map((e) => toMinutes(e.end))) / 60);
-  return { from, to: Math.min(Math.max(last, from + 1) + fill, 24) };
-}
-
-export function dayContent(c: PlanContext): string {
-  const isToday = c.date === c.now.date;
-  const dayEvents = eventsOn(c.events, c.date);
-  const o: AxisOptions = { ...dayHours(dayEvents, c.hours, c.fillHours), hourPx: DAY_HOUR_PX, now: c.now, marks: c.marks, changed: c.changed };
-  let top = "";
-  let showAxis = dayEvents.length > 0;
-  if (isToday) {
-    const t = todayState(c.events, c.now);
-    top = t.state !== "classes" ? nextCard(c, t.state, t.next) : nowNext(c);
-  } else if (!dayEvents.length) {
-    const holiday = holidayOn(c.tt.day_notes, c.date);
-    top = `<div class="empty-day">${esc(holiday ? holiday : "Brak zajęć")}</div>`;
-    showAxis = false;
-  }
-  return `<div class="day ${c.anim}">
-    <div class="dayhead">
-      <h1 aria-label="${esc(longDate(c.date).replace(/^./, (ch) => ch.toUpperCase()))}">${dayTitle(c.date)}</h1>
-      <span class="rel${isToday ? " rel-today" : ""}">${esc(relativeDay(c.date, c.now.date))}</span>
-      ${isToday ? "" : `<button class="chip" data-action="today">Dziś</button>`}
-    </div>
-    ${dayNotes(c, c.date)}
-    ${top}
-    ${showAxis ? `<div class="timeline" data-swipe="day">${axis(o)}${dayColumn(c.date, c.events, o)}</div>` : `<div class="swipe-area" data-swipe="day"></div>`}
-  </div>`;
-}
-
-function dayTabs(c: PlanContext): string {
-  const days = weekDays(c.date, c.withWeekend);
-  return days
-    .map((d) => {
-      const has = eventsOn(c.events, d).length > 0;
-      const cls = ["daytab", d === c.date ? "on" : "", d === c.now.date ? "today" : "", has ? "" : "free"].filter(Boolean).join(" ");
-      return `<button class="${cls}" data-action="pick-day" data-date="${d}" aria-pressed="${d === c.date}" aria-label="${esc(longDate(d))}${has ? "" : ", brak zajęć"}">
-        <span class="dt-name">${DAY_SHORT[weekday(d)]}</span><span class="dt-num">${Number(d.slice(8))}</span></button>`;
-    })
-    .join("");
-}
-
-// ---------- plan: week ----------
-
-function weekGrid(c: PlanContext, compact: boolean): string {
-  const days = weekDays(c.date, c.withWeekend);
-  const o: AxisOptions = { ...c.hours, hourPx: compact ? c.weekHourPx : 52, compact, now: c.now, marks: c.marks, changed: c.changed };
-  const heads = days
-    .map((d) => {
-      const isToday = d === c.now.date;
-      const notes = compact ? "" : dayNotes(c, d);
-      return `<button class="wk-head${isToday ? " today" : ""}" data-action="open-day" data-date="${d}">
-        <span class="wk-day">${compact ? DAY_SHORT[weekday(d)] : esc(longDate(d).split(",")[0])}</span>
-        <span class="wk-date"><span class="wk-num">${compact ? Number(d.slice(8)) : esc(numericDate(d).slice(0, 5))}</span>${isToday && !compact ? " · dziś" : ""}</span>${notes}</button>`;
-    })
-    .join("");
-  const cols = days.map((d) => dayColumn(d, c.events, o)).join("");
-  return `<div class="week${compact ? " week-compact" : ""} ${c.anim}" style="--days:${days.length}">
-    <div class="wk-heads"><span></span>${heads}</div>
-    <div class="wk-body" data-swipe="week">${axis(o)}${cols}</div>
-  </div>`;
-}
 
 
 
-// ---------- plan: layouts ----------
 
-/** "ten tydzień" / "najbliższy tydzień" (at the weekend) / "" for other weeks. */
-function weekTag(c: PlanContext, monday: string): string {
-  if (weekStart(c.now.date, c.withWeekend) !== monday) return "";
-  return mondayOf(c.now.date) === monday ? "ten tydzień" : "najbliższy tydzień";
-}
 
-export function phonePlan(c: PlanContext, mode: "day" | "week"): string {
-  const monday = weekStart(c.date, c.withWeekend);
-  const tag = weekTag(c, monday);
-  const days = c.withWeekend ? 7 : 5;
-  const bar =
-    mode === "day"
-      ? `<nav class="weekbar"><button class="iconbtn" data-action="prev-week" aria-label="Poprzedni tydzień">${ICON.left}</button>
-          <div class="daytabs">${dayTabs(c)}</div>
-          <button class="iconbtn" data-action="next-week" aria-label="Następny tydzień">${ICON.right}</button></nav>`
-      : `<nav class="weekbar"><button class="iconbtn" data-action="prev-week" aria-label="Poprzedni tydzień">${ICON.left}</button>
-          <div class="weeklabel">${esc(weekRange(monday, days))}${tag ? ` · <span class="rel-today">${tag}</span>` : ""}</div>
-          <button class="iconbtn" data-action="next-week" aria-label="Następny tydzień">${ICON.right}</button></nav>`;
-  return `<div class="app phone mode-${mode}">
-    <header class="topbar">${brand(false, true)}
-      <div class="seg seg-mode" role="group" aria-label="Widok">
-        <button class="seg-btn${mode === "day" ? " on" : ""}" data-action="mode" data-mode="day" aria-pressed="${mode === "day"}">Dzień</button>
-        <button class="seg-btn${mode === "week" ? " on" : ""}" data-action="mode" data-mode="week" aria-pressed="${mode === "week"}">Tydzień</button>
-      </div>
-      <button class="iconbtn menubtn${c.unseen ? " has-badge" : ""}" data-action="menu" aria-label="Menu${c.unseen ? " (są nowe zmiany)" : ""}">${ICON.menu}</button></header>
-    ${bar}
-    <main class="content" data-swipe="${mode}">${problemBanner(c.entry, c.tt)}${changesBanner(c)}${mode === "day" ? dayContent(c) : weekGrid(c, true)}</main>
-    <footer class="bottombar">
-      <button class="selection" data-action="groups" aria-label="Zmień plan lub grupy. Twoje grupy: ${esc(groupsSummary(c.tt, c.sel))}">
-        <span class="sel-name">${esc(timetableShort(c.tt.id))}</span>
-        <span class="sel-groups">Gr. ${esc(groupsShort(c.tt, c.sel))}</span></button>
-      ${statusButton(c.entry, c.at, c.offline, true)}
-    </footer>
-  </div>`;
-}
 
-export function desktopPlan(c: PlanContext): string {
-  const monday = weekStart(c.date, c.withWeekend);
-  const days = c.withWeekend ? 7 : 5;
-  const tag = weekTag(c, monday);
-  return `<div class="app desktop">
-    <aside class="sidebar">
-      ${brand()}
-      <section class="sel-card">
-        <div class="sel-programme">${esc(programmeName(parseId(c.tt.id)?.programme ?? ""))}</div>
-        <div class="sel-plan">${esc(timetableName(c.tt.id))}</div>
-        <div class="sel-groups-label">Twoje grupy</div>
-        <div class="sel-groups-value">${esc(groupsShort(c.tt, c.sel))}</div>
-        <div class="sel-groups-sub">w podziałach na ${esc(c.tt.splits.join(" · "))} grupy</div>
-        ${c.sel.optional.length ? `<div class="sel-optional">+ ${esc(c.sel.optional.join(", "))}</div>` : ""}
-        <button class="secondary" data-action="groups">Zmień grupy</button>
-      </section>
-      <nav class="sidenav" aria-label="Więcej">${menuItems(c, false)}</nav>
-      <div class="spacer"></div>
-      ${statusButton(c.entry, c.at, c.offline)}
-      <p class="fine">Plan nieoficjalny, tworzony automatycznie z PDF na stronie UR. Obowiązuje PDF.</p>
-    </aside>
-    <main class="main">
-      ${problemBanner(c.entry, c.tt)}${changesBanner(c)}
-      <div class="weekhead">
-        <button class="iconbtn" data-action="prev-week" aria-label="Poprzedni tydzień">${ICON.left}</button>
-        <h1>${esc(weekRange(monday, days))} ${esc(monday.slice(0, 4))}</h1>
-        <button class="iconbtn" data-action="next-week" aria-label="Następny tydzień">${ICON.right}</button>
-        ${tag ? `<span class="rel rel-today">${tag}</span>` : `<button class="chip" data-action="today">Dziś</button>`}
-      </div>
-      ${weekGrid(c, false)}
-    </main>
-  </div>`;
-}
+
+
+
+
+
+
+
 
 // ---------- sheets ----------
 
@@ -598,7 +336,7 @@ export function eventSheet(
   return sheet(
     "event",
     e.title,
-    `<div class="sheet-swatch" style="--c:${esc(e.color)}"></div>
+    `<div class="sheet-swatch" style="--c:${esc(stripeColor(e.color))}"></div>
      <dl class="facts">${rows
        .map(([k, v]) => `<dt>${esc(k)}</dt><dd${k === "Godziny" && isWf(e) ? " data-wf-hours" : ""}>${esc(v)}</dd>`)
        .join("")}</dl>
@@ -670,7 +408,7 @@ export function infoSheet(entry: IndexEntry, tt: Timetable, at: Date): string {
   );
 }
 
-function sheet(kind: string, title: string, body: string): string {
+export function sheet(kind: string, title: string, body: string): string {
   return `<div class="sheet-layer" data-sheet="${kind}">
     <div class="backdrop" data-action="close-sheet"></div>
     <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" tabindex="-1"><div class="sheet-scroll">
@@ -683,80 +421,10 @@ function sheet(kind: string, title: string, body: string): string {
 
 // ---------- menu ----------
 
-type MenuContext = PlanContext;
 
-/** "Zgłoś błąd": an email with what's needed to check the report (shown once there's a contact address). */
-function feedbackHref(c: PlanContext): string {
-  const body = [
-    `Plan: ${timetableShort(c.tt.id)}`,
-    `Grupy: ${groupsSummary(c.tt, c.sel)}`,
-    `Wersja: ${VERSION}, dane z ${c.tt.source.updated ? numericDate(c.tt.source.updated) : "—"}`,
-    `Oglądany dzień: ${numericDate(c.date)}`,
-    "",
-    "Co się nie zgadza albo co poprawić:",
-    "",
-  ].join("\n");
-  return `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(`Plan UR ${VERSION}: uwaga`)}&body=${encodeURIComponent(body)}`;
-}
 
-const THEMES: [Theme, string][] = [
-  ["auto", "Auto"],
-  ["light", "Jasny"],
-  ["dark", "Ciemny"],
-];
 
-function themeRow(theme: Theme): string {
-  const buttons = THEMES.map(
-    ([t, label]) =>
-      `<button class="seg-btn${t === theme ? " on" : ""}" data-action="theme" data-theme="${t}" aria-pressed="${t === theme}"${
-        t === "auto" ? ' title="Jak w ustawieniach telefonu lub komputera"' : ""
-      }>${label}</button>`,
-  ).join("");
-  return `<div class="theme-row"><span class="mi-icon">${ICON.theme}</span><span class="mi-label" id="theme-label">Motyw</span>
-    <div class="seg" role="group" aria-labelledby="theme-label">${buttons}</div></div>`;
-}
 
-/** Links to everything beyond the plan: a sheet on the phone, the sidebar on desktop. */
-export function menuItems(c: MenuContext, phone: boolean): string {
-  const item = (action: string, icon: string, label: string, sub = "", extra = "") =>
-    `<button class="menu-item" data-action="${action}" ${extra}><span class="mi-icon">${icon}</span>
-      <span class="mi-text"><span class="mi-label">${label}</span>${sub ? `<span class="mi-sub">${sub}</span>` : ""}</span></button>`;
-  const changesSub = c.unseen
-    ? `<span class="badge">${esc(plural(c.unseen.count, "nowa zmiana", "nowe zmiany", "nowych zmian"))}</span>`
-    : phone
-      ? "Co uczelnia zmieniła w kolejnych wersjach"
-      : "";
-  const feedback = CONTACT_EMAIL
-    ? `<a class="menu-item" href="${esc(feedbackHref(c))}"><span class="mi-icon">${ICON.mail}</span>
-        <span class="mi-text"><span class="mi-label">Zgłoś błąd lub uwagę</span></span></a>`
-    : "";
-  const install = c.canInstall ? item("install", ICON.install, "Zainstaluj jako aplikację", phone ? "Ikona na ekranie, działa bez internetu" : "") : "";
-  if (!phone) {
-    return [
-      item("changes", ICON.changes, "Zmiany w planie", changesSub),
-      item("share", ICON.share, "Udostępnij stronę"),
-      item("ics", ICON.calendar, "Dodaj do kalendarza"),
-      install,
-      feedback,
-      item("info", ICON.file, "Skąd jest ten plan?"),
-      item("page", ICON.info, "O projekcie", "", 'data-page="about"'),
-      item("page", ICON.shield, "Prywatność", "", 'data-page="privacy"'),
-      themeRow(c.theme),
-    ].join("");
-  }
-  // Phone: what students use most at the top; the rest smaller, the info pages as links at the bottom.
-  return [
-    item("changes", ICON.changes, "Zmiany w planie", changesSub),
-    item("share", ICON.share, "Udostępnij stronę", "Kod QR i link dla znajomych"),
-    item("groups", ICON.groups, "Zmień plan lub grupy", wfPlanned(c.tt) ? "Także godzina WF" : ""),
-    install,
-    `<div class="menu-more">${item("ics", ICON.calendar, "Dodaj do kalendarza (.ics)")}${feedback}${themeRow(c.theme)}</div>`,
-    `<div class="linkrow menu-links">
-       <button class="link-btn" data-action="info">Skąd jest ten plan?</button>
-       <button class="link-btn" data-action="page" data-page="about">O projekcie</button>
-       <button class="link-btn" data-action="page" data-page="privacy">Prywatność</button></div>`,
-  ].join("");
-}
 
 /** The public address: shared links always point here, also from localhost or an installed app. */
 export const SITE_URL = "https://bylge.github.io/ur_timetable/";
@@ -797,9 +465,6 @@ export function shareSheet(o: ShareOptions): string {
   );
 }
 
-export function menuSheet(c: MenuContext): string {
-  return sheet("menu", "Menu", `<nav class="menu" aria-label="Menu">${menuItems(c, true)}</nav>`);
-}
 
 export interface IcsSummary {
   count: number;
@@ -1020,6 +685,7 @@ export function privacyView(): string {
        <li>wybrany plan, numery grup i Twoja godzina WF (jeśli ją ustawisz),</li>
        <li>widok (dzień albo tydzień) i motyw, jeśli go wybierzesz,</li>
        <li>Twoje oznaczenia „Odwołane” i notatki,</li>
+       <li>Twoje terminy (egzaminy, kolokwia, zaliczenia, zadania),</li>
        <li>ostatnio widziana wersja planu (żeby pokazać, co się zmieniło) i wersja strony (żeby nowości pokazać tylko raz).</li>
      </ul>
      <p>Te dane nie są nigdzie wysyłane. Żeby strona działała bez internetu, przeglądarka przechowuje też kopię strony i planu.</p>

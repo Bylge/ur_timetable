@@ -39,7 +39,7 @@
       }
 
       @media (prefers-color-scheme: dark) {
-        :root:not([data-theme="light"]) {
+        :root:not([data-theme]) {
           --bg: #0f1115;
           --surface: #171a20;
           --surface-2: #20242c;
@@ -82,27 +82,70 @@
         --shadow-l: 0 10px 40px rgb(0 0 0 / 55%);
         color-scheme: dark;
       }
+      /* more themes (0.7.0): pastel pink, bright warm, dark navy */
+      :root[data-theme="roz"] {
+        --bg: #fde4ee;
+        --surface: #fff5f9;
+        --surface-2: #fbd3e3;
+        --text: #3a1427;
+        --muted: #8b5670;
+        --line: #f6cadc;
+        --line-strong: #eeb3cb;
+        --accent: #e0428a;
+        --accent-fg: #ffffff;
+        --accent-soft: #fcd0e3;
+        color-scheme: light;
+      }
+      :root[data-theme="slonce"] {
+        --bg: #fff8ec;
+        --surface: #ffffff;
+        --surface-2: #fdeed6;
+        --text: #241a0e;
+        --muted: #7a654a;
+        --line: #f5e4c8;
+        --line-strong: #ecd2a8;
+        --accent: #e8590c;
+        --accent-fg: #ffffff;
+        --accent-soft: #ffe6d2;
+        color-scheme: light;
+      }
+      :root[data-theme="polnoc"] {
+        --bg: #0a0f1f;
+        --surface: #121a30;
+        --surface-2: #1a2440;
+        --text: #e7eaf7;
+        --muted: #95a1c6;
+        --line: #222c49;
+        --line-strong: #2f3a5e;
+        --accent: #8f7dff;
+        --accent-fg: #0b0f1f;
+        --accent-soft: #252156;
+        --ok: #4fd49a;
+        --warn: #f0b252;
+        --warn-bg: #33270f;
+        --problem: #ff7a72;
+        --problem-bg: #3a1716;
+        --now: #ff6b81;
+        --shadow: 0 1px 2px rgb(0 0 0 / 45%);
+        --shadow-l: 0 12px 40px rgb(0 0 0 / 60%);
+        color-scheme: dark;
+      }
       html { background: var(--bg); }
       body { margin: 0; background: var(--bg); }
-      /* skeleton: shown until the data is ready */
-      .skel { min-height: 100dvh; display: flex; }
-      .sk-side { display: none; }
-      .sk-main { flex: 1; padding: 14px 14px 0; display: grid; align-content: start; gap: 12px; max-width: 560px; }
+      /* skeleton: shown until the data is ready (the layout of the plan: header, day picker, blocks, the pill) */
+      .skel { min-height: 100dvh; max-width: 1200px; margin: 0 auto; padding: 20px 20px 0; display: grid; align-content: start; gap: 14px; }
       .skel i { display: block; border-radius: 10px; background: var(--surface-2); }
       .sk-row { display: flex; justify-content: space-between; gap: 12px; }
-      .sk-row i { height: 26px; }
-      .sk-tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding: 4px 30px 8px; border-bottom: 1px solid var(--line); }
-      .sk-tabs i { height: 40px; }
-      .skel .sk-line { height: 22px; margin-top: 4px; }
+      .sk-row i { height: 16px; }
+      .skel .sk-title { height: 30px; width: 72%; max-width: 420px; }
+      .sk-tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; padding: 0 28px 12px; border-bottom: 1px solid var(--line); }
+      .sk-tabs i { height: 48px; border-radius: 14px; }
       .skel .sk-block { border-left: 4px solid var(--line-strong); }
+      .sk-pill { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); width: 300px; height: 50px; border-radius: 999px !important; }
       .skel i { animation: shimmer 1.2s ease-in-out infinite alternate; }
       @keyframes shimmer { from { opacity: 1; } to { opacity: .45; } }
       @media (prefers-reduced-motion: reduce) { .skel i { animation: none; } }
-      @media (min-width: 900px) {
-        .sk-side { display: block; width: 300px; flex: none; background: var(--surface); border-right: 1px solid var(--line); }
-        .sk-main { padding: 22px 32px; max-width: none; }
-        .sk-tabs { display: none; }
-      }
+      @media (min-width: 900px) { .skel { padding: 26px 40px 0; } .sk-pill { display: none; } }
     </style>
     <script>
       // Before the first paint: the student's theme (no flash of the wrong colours), and the data downloads,
@@ -110,10 +153,10 @@
       (function () {
         try {
           var theme = localStorage.getItem("planur:theme:v1");
-          if (theme === "light" || theme === "dark") {
+          var bgs = { light: "#f5f6f8", dark: "#0f1115", roz: "#fde4ee", slonce: "#fff8ec", polnoc: "#0a0f1f" };
+          if (bgs[theme]) {
             document.documentElement.dataset.theme = theme;
-            var bg = theme === "dark" ? "#0f1115" : "#f5f6f8";
-            document.querySelectorAll('meta[name="theme-color"]').forEach(function (m) { m.content = bg; });
+            document.querySelectorAll('meta[name="theme-color"]').forEach(function (m) { m.content = bgs[theme]; });
           }
         } catch (e) {}
         try {
@@ -140,15 +183,13 @@
   <body>
     <div id="app">
       <div class="skel" role="status" aria-label="Wczytywanie planu">
-        <div class="sk-side"></div>
-        <div class="sk-main">
-          <div class="sk-row"><i style="width: 52%"></i><i style="width: 34%"></i></div>
-          <div class="sk-tabs"><i></i><i></i><i></i><i></i><i></i></div>
-          <i class="sk-line" style="width: 64%"></i>
-          <i class="sk-block" style="height: 118px"></i>
-          <i class="sk-block" style="height: 86px; width: 88%"></i>
-          <i class="sk-block" style="height: 150px"></i>
-        </div>
+        <div class="sk-row"><i style="width: 58%"></i><i style="width: 18%"></i></div>
+        <i class="sk-title"></i>
+        <div class="sk-tabs"><i></i><i></i><i></i><i></i><i></i></div>
+        <i class="sk-block" style="height: 118px"></i>
+        <i class="sk-block" style="height: 86px; width: 88%"></i>
+        <i class="sk-block" style="height: 150px"></i>
+        <i class="sk-pill"></i>
       </div>
     </div>
     <noscript>Ta strona wymaga JavaScriptu. Oficjalny plan w PDF znajdziesz na stronie Uniwersytetu Rzeszowskiego.</noscript>

@@ -32,6 +32,20 @@ export function newsFor(current: string, seen: string | null, any = false): { ve
 }
 
 export const NEWS: Record<string, News> = {
+  "0.7.0": {
+    date: "27 listopada",
+    highlights: [
+      { icon: "week", title: "Nowy wygląd", text: "Dzień, Tydzień i Terminy na dole ekranu, data zawsze na górze." },
+      { icon: "calendar", title: "Terminy", text: "Zapisz egzaminy, kolokwia i zadania. Widać, ile zostało dni." },
+      { icon: "palette", title: "Motywy", text: "Sześć do wyboru, m.in. Róż, Słońce i Północ: menu → Motyw." },
+      { icon: "clock", title: "Po zajęciach", text: "Pod datą pojawia się, kiedy masz następne zajęcia." },
+    ],
+    more: [
+      "Ikona kalendarza obok menu wraca do dziś (albo do tego tygodnia).",
+      "Tydzień ze strzałkami przy nazwach dni.",
+      "Menu: Twój plan na górze, informacje o stronie na dole.",
+    ],
+  },
   "0.6.0": {
     date: "23 listopada",
     highlights: [

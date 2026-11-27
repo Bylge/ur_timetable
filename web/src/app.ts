@@ -1,5 +1,5 @@
 // App state and events. One state object; render() redraws from it. Clicks are handled in one place
-// through data-action attributes (see views.ts).
+// through data-action attributes (see plan.ts and views.ts).
 //
 // Sheets and pages (Zmiany, O projekcie, Prywatność) add a browser history entry, so the phone's back
 // gesture closes them instead of leaving the site.
@@ -25,8 +25,14 @@ import {
   saveSeenVersion,
   selectionParams,
   syncUrl,
+  loadTab,
+  saveTab,
+  THEMES,
+  type Tab,
   type Theme,
 } from "./data";
+import { loadTerms, newTermId, saveTerms, type Term, type TermType } from "./terms";
+import { DAY_HOUR_PX, WEEK_HOUR_PX, WEEK_MAX_HOUR_PX, WEEK_MIN_HOUR_PX, menuSheet, navButtons, planScreen, termForm, termSheet, type PlanContext, type TermDraft } from "./plan";
 import { endAfter, hasWeekendClasses, hourRange, myEvents, selectionComplete, validTime, weekStart, wfPlanned } from "./schedule";
 import { cachedQr, qrPng, qrSvg } from "./qr";
 import { newsFor, type News } from "./news";
@@ -38,7 +44,6 @@ import { addDays, nowInWarsaw, shortTime, weekday, type Now } from "./time";
 import {
   aboutView,
   changesView,
-  desktopPlan,
   errorView,
   eventSheet,
   groupsView,
@@ -47,18 +52,12 @@ import {
   icsSheet,
   infoSheet,
   iosInstallSheet,
-  menuSheet,
   noteText,
-  phonePlan,
   pickerView,
   privacyView,
   newsPopup,
-  DAY_HOUR_PX,
-  WEEK_HOUR_PX,
-  WEEK_MIN_HOUR_PX,
   shareSheet,
   SITE_URL,
-  type PlanContext,
 } from "./views";
 
 type Page = "changes" | "about" | "privacy";
@@ -72,10 +71,11 @@ type Sheet =
   | { kind: "ios-install" }
   | { kind: "share"; withGroups: boolean }
   | { kind: "news"; version: string; news: News }
+  | { kind: "term"; id: string; armed: boolean }
+  | { kind: "term-form" }
   | null;
 
 const PAGE_HASH: Record<Page, string> = { changes: "zmiany", about: "o-projekcie", privacy: "prywatnosc" };
-const MODE_KEY = "planur:mode:v1";
 const wide = window.matchMedia("(min-width: 900px)");
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const REFRESH_AFTER_MS = 5 * 60_000; // an app brought back from the background checks for a new version
@@ -99,7 +99,7 @@ const state = {
   changes: new Map<string, ChangeSet[]>(),
   selection: null as Selection | null,
   draft: null as Selection | null,
-  mode: (readMode() ?? "day") as "day" | "week",
+  tab: loadTab() ?? (window.matchMedia("(min-width: 900px)").matches ? "week" : "day"),
   date: "",
   sheet: null as Sheet,
   anim: "",
@@ -112,8 +112,11 @@ const state = {
   leaving: false, // a sheet is animating out
   loadedAt: Date.now(),
   openedOn: "", // "today" when the plan was opened, to follow the date if the app stays open overnight
-  fill: { key: "", hours: 0 },
-  weekFit: { key: 0, px: 0 }, // phone week grid: hour height that fits the screen (see fitWeek) // day view: empty hours that fill the screen below a short day (see fitDay)
+  fill: { key: "", hours: 0 }, // day view: empty hours that fill the screen below a short day (see fitDay)
+  weekFit: { key: 0, px: 0 }, // phone week grid: hour height that fits the screen (see fitWeek)
+  terms: loadTerms(),
+  showPast: false, // Terminy: past entries unfolded
+  termDraft: null as TermDraft | null, // the add/edit form
 };
 
 // The skeleton from index.html, shown until the data is ready.
@@ -121,14 +124,6 @@ let skeleton = "";
 
 let root: HTMLElement;
 
-function readMode(): "day" | "week" | null {
-  try {
-    const m = localStorage.getItem(MODE_KEY);
-    return m === "day" || m === "week" ? m : null;
-  } catch {
-    return null;
-  }
-}
 
 function now(): Now {
   return nowInWarsaw();
@@ -236,10 +231,15 @@ function render(): void {
       offline: !navigator.onLine,
       canInstall: Boolean(state.install) || (ios && !installed),
       theme: state.theme,
+      tab: state.tab,
+      wide: wide.matches,
+      terms: state.terms,
+      showPast: state.showPast,
       weekHourPx: state.weekFit.key === window.innerHeight ? state.weekFit.px : WEEK_HOUR_PX,
       fillHours: state.fill.key === fillKey() ? state.fill.hours : 0,
     };
-    html = wide.matches ? desktopPlan(c) : phonePlan(c, state.mode);
+    html = planScreen(c);
+    pillContext = c;
     const s = state.sheet;
     if (s?.kind === "event") {
       const e = events.find((x) => x.id === s.id) ?? cur.tt.events.find((x) => x.id === s.id);
@@ -252,19 +252,36 @@ function render(): void {
     else if (s?.kind === "ios-install") html += iosInstallSheet();
     else if (s?.kind === "share") html += renderShare(s.withGroups);
     else if (s?.kind === "news") html += newsPopup(s.version, s.news);
+    else if (s?.kind === "term") {
+      const t = state.terms.find((x) => x.id === s.id);
+      if (t) html += termSheet(t, c, s.armed);
+    } else if (s?.kind === "term-form" && state.termDraft) html += termForm(state.termDraft, c);
   }
+  const pills = pillPositions();
   root.innerHTML = html;
+  slidePills(pills);
+  updatePill(state.view === "plan" ? pillContext : null);
+  pillContext = null;
   state.anim = "";
   if (state.sheetEnter) root.querySelector(".sheet-layer")?.classList.add("enter");
   state.sheetEnter = false;
   document.documentElement.classList.toggle("sheet-open", Boolean(state.sheet));
-  fitDayhead();
-  root.querySelector<HTMLElement>(".sheet, .news-card")?.focus();
-  if (fitDay() || fitWeek()) {
+  fitTitle();
+  if (state.sheetEnter || !state.sheet) root.querySelector<HTMLElement>(".sheet, .news-card")?.focus();
+  // at most one second pass: a measurement that keeps changing (a layout bug) mustn't redraw forever
+  if (!refitting && (fitDay() || fitWeek())) {
     state.anim = anim; // the second pass replaces the first before it's painted: keep its transition
-    render();
+    refitting = true;
+    try {
+      render();
+    } finally {
+      refitting = false;
+    }
   }
 }
+
+/** Set during the second, fitted pass of render(). */
+let refitting = false;
 
 /** Which day view the measured fill belongs to (another day or screen size is measured again). */
 function fillKey(): string {
@@ -278,12 +295,11 @@ function fillKey(): string {
  */
 function fitDay(): boolean {
   const timeline = root.querySelector<HTMLElement>(".day .timeline");
-  const bar = root.querySelector<HTMLElement>(".bottombar");
-  if (!timeline || !bar || state.view !== "plan" || state.mode !== "day" || wide.matches) return false;
+  if (!timeline || state.view !== "plan" || state.tab !== "day") return false;
   const key = fillKey();
   const current = state.fill.key === key ? state.fill.hours : 0;
   const bottom = timeline.getBoundingClientRect().bottom + window.scrollY;
-  const free = window.innerHeight - bar.offsetHeight - bottom;
+  const free = bottomLimit() - bottom;
   let hours = current;
   if (free >= DAY_HOUR_PX) hours += Math.floor(free / DAY_HOUR_PX);
   else if (free < 0 && current > 0) hours = Math.max(0, current - Math.ceil(-free / DAY_HOUR_PX));
@@ -293,34 +309,115 @@ function fitDay(): boolean {
 }
 
 /**
- * Phone week grid: if the week sticks out below the bottom bar by a little, make the hours a bit shorter so it
- * fits (down to WEEK_MIN_HOUR_PX; beyond that it scrolls as before). If there's room again, back towards the
- * usual height. Returns true when the height changed and the view needs drawing again.
+ * Phone week grid: the hours are as tall as fits above the pill. A week that sticks out a little gets shorter hours
+ * (down to WEEK_MIN_HOUR_PX; beyond that it scrolls); on a tall phone they grow to fill the screen (up to
+ * WEEK_MAX_HOUR_PX). Returns true when the height changed and the view needs drawing again.
  */
 function fitWeek(): boolean {
   const body = root.querySelector<HTMLElement>(".week-compact .wk-body");
   const axis = body?.querySelector<HTMLElement>(".axis");
-  const bar = root.querySelector<HTMLElement>(".bottombar");
-  if (!body || !axis || !bar || state.view !== "plan" || state.mode !== "week" || wide.matches) return false;
+  if (!body || !axis || state.view !== "plan" || state.tab !== "week" || wide.matches) return false;
   const key = window.innerHeight;
   const current = state.weekFit.key === key ? state.weekFit.px : WEEK_HOUR_PX;
   const hours = Math.round(axis.offsetHeight / current);
   const bottom = body.getBoundingClientRect().bottom + window.scrollY;
-  const free = window.innerHeight - bar.offsetHeight - bottom; // < 0: it scrolls
+  const free = bottomLimit() - bottom; // < 0: it scrolls
   const wanted = Math.floor(current + free / hours);
-  const px = Math.max(WEEK_MIN_HOUR_PX, Math.min(WEEK_HOUR_PX, wanted));
+  const px = Math.max(WEEK_MIN_HOUR_PX, Math.min(WEEK_MAX_HOUR_PX, wanted));
   state.weekFit = { key, px };
   return px !== current;
 }
 
-/** The day header stays on one line: if "Poniedziałek, 26 października · za 5 dni · Dziś" wraps, use "Pon.". */
-function fitDayhead(): void {
-  const head = root.querySelector<HTMLElement>(".dayhead");
-  if (!head) return;
-  head.classList.remove("tight");
-  const first = head.firstElementChild as HTMLElement;
-  const last = head.lastElementChild as HTMLElement;
-  if (last.offsetTop > first.offsetTop + first.offsetHeight / 2) head.classList.add("tight");
+// ---------- the pill (phone): made once, kept between redraws ----------
+// Rebuilding it on every redraw (a new day, the menu, the minute's update) made it flicker; now only its chosen
+// button and badge change, and the highlight moves only when the view does.
+
+let pillHost: HTMLElement;
+let pillContext: PlanContext | null = null; // the context of the redraw in progress
+let pillKey = "";
+
+function updatePill(c: PlanContext | null): void {
+  if (!c || c.wide) {
+    pillHost.innerHTML = "";
+    pillKey = "";
+    return;
+  }
+  const markup = navButtons(c);
+  if (markup === pillKey) return; // nothing changed: leave it alone
+  const first = !pillHost.firstElementChild;
+  if (first) pillHost.innerHTML = `<nav class="pill" aria-label="Widok">${markup}</nav>`;
+  else {
+    const nav = pillHost.firstElementChild!;
+    const ind = nav.querySelector(".ind")!;
+    nav.innerHTML = markup;
+    nav.querySelector(".ind")!.replaceWith(ind); // the same highlight element, so it can slide
+  }
+  pillKey = markup;
+  const ind = pillHost.querySelector<HTMLElement>(".ind")!;
+  const on = pillHost.querySelector<HTMLElement>("button.on")!;
+  if (first || reducedMotion.matches) ind.style.transition = "none";
+  ind.style.transform = `translateX(${on.offsetLeft}px)`;
+  ind.style.width = `${on.offsetWidth}px`;
+  if (first) {
+    void ind.offsetWidth;
+    ind.style.transition = "";
+  }
+}
+
+// ---------- the switch in the header (computer): its highlight slides to the chosen view ----------
+
+type PillPos = Map<string, { left: number; width: number }>;
+
+/** Where the highlight sits in the pill (phone) and the header switch (computer), before a redraw. */
+function pillPositions(): PillPos {
+  const out: PillPos = new Map();
+  for (const kind of ["navseg"]) {
+    const on = root?.querySelector<HTMLElement>(`.${kind} button.on`);
+    if (on) out.set(kind, { left: on.offsetLeft, width: on.offsetWidth });
+  }
+  return out;
+}
+
+/**
+ * After a redraw the highlight is a new element: place it without animation where it was (or, if the view didn't
+ * change, where it belongs), and only then let it slide to the chosen view. Placing it with the transition on would
+ * slide it in from the first button on every redraw (opening the menu, a new day, the minute's update).
+ */
+function slidePills(before: PillPos): void {
+  for (const kind of ["navseg"]) {
+    const ind = root.querySelector<HTMLElement>(`.${kind} .ind`);
+    const on = root.querySelector<HTMLElement>(`.${kind} button.on`);
+    if (!ind || !on) continue;
+    const to = { left: on.offsetLeft, width: on.offsetWidth };
+    const from = before.get(kind) ?? to;
+    ind.style.transition = "none";
+    ind.style.transform = `translateX(${from.left}px)`;
+    ind.style.width = `${from.width}px`;
+    if (from.left === to.left && from.width === to.width) continue; // stays: no transition at all
+    if (reducedMotion.matches) {
+      ind.style.transform = `translateX(${to.left}px)`;
+      ind.style.width = `${to.width}px`;
+      continue;
+    }
+    void ind.offsetWidth; // the start is applied before the transition comes back
+    ind.style.transition = "";
+    ind.style.transform = `translateX(${to.left}px)`;
+    ind.style.width = `${to.width}px`;
+  }
+}
+
+/** Where the plan may end without scrolling: above the pill (phone), the bottom of the window (computer). */
+function bottomLimit(): number {
+  const pill = pillHost.querySelector<HTMLElement>(".pill");
+  return pill ? pill.getBoundingClientRect().top - 14 : window.innerHeight - 24;
+}
+
+/** The big date stays on one line: "Poniedziałek, 30 listopada" becomes "Pon., 30 listopada" when it doesn't fit. */
+function fitTitle(): void {
+  const title = root.querySelector<HTMLElement>(".top .title");
+  if (!title || !title.querySelector(".wd-full")) return;
+  title.classList.remove("tight");
+  if (title.scrollWidth > title.clientWidth + 1) title.classList.add("tight");
 }
 
 // ---------- theme ----------
@@ -332,10 +429,9 @@ function applyTheme(theme: Theme): void {
   if (theme === "auto") delete html.dataset.theme;
   else html.dataset.theme = theme;
   // the phone's status bar colour follows the page background
-  const metas = document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]');
-  metas.forEach((m) => {
-    const dark = m.media.includes("dark");
-    m.content = theme === "auto" ? (dark ? "#0f1115" : "#f5f6f8") : theme === "dark" ? "#0f1115" : "#f5f6f8";
+  const bg = THEMES.find((t) => t.id === theme)?.bg;
+  document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((m) => {
+    m.content = bg || (m.media.includes("dark") ? "#0f1115" : "#f5f6f8");
   });
   render();
 }
@@ -458,6 +554,20 @@ function step(days: number): void {
   go(addDays(state.date, days), days > 0 ? "anim-left" : "anim-right");
 }
 
+/** The next (or previous) day the picker shows: past Friday to Monday when there are no weekend classes. */
+function nextDay(date: string, direction: 1 | -1): string {
+  const cur = current();
+  const withWeekend = cur ? hasWeekendClasses(cur.tt) : false;
+  let d = addDays(date, direction);
+  while (!withWeekend && weekday(d) >= 5) d = addDays(d, direction);
+  return d;
+}
+
+function stepDay(direction: 1 | -1): void {
+  go(nextDay(state.date, direction), direction > 0 ? "anim-left" : "anim-right");
+}
+
+/** Week view: the week before or after. */
 function stepWeek(direction: 1 | -1): void {
   const cur = current();
   const withWeekend = cur ? hasWeekendClasses(cur.tt) : false;
@@ -469,14 +579,75 @@ function stepWeek(direction: 1 | -1): void {
   step(7 * direction);
 }
 
-function setMode(mode: "day" | "week"): void {
-  state.mode = mode;
-  try {
-    localStorage.setItem(MODE_KEY, mode);
-  } catch {
-    // ignore
+function setTab(tab: Tab, anim = "anim-fade"): void {
+  if (state.tab === tab) {
+    window.scrollTo({ top: 0, behavior: reducedMotion.matches ? "auto" : "smooth" });
+    return;
   }
+  state.tab = tab;
+  saveTab(tab);
+  state.anim = anim;
   render();
+  window.scrollTo(0, 0);
+}
+
+/** A day from the week, a change or an entry: show it in the day view. */
+function showDay(date: string): void {
+  state.date = date;
+  if (state.tab !== "day") {
+    state.tab = "day";
+    saveTab("day");
+  }
+  state.anim = "anim-fade";
+  render();
+  window.scrollTo(0, 0);
+}
+
+// ---------- Terminy ----------
+
+function openTermForm(term: Term | null): void {
+  const today = now().date;
+  state.termDraft = term
+    ? { id: term.id, type: term.type, subject: term.subject, custom: !myEventTitles().includes(term.subject), date: term.date, time: term.time, room: term.room, note: term.note }
+    : { id: null, type: "kolokwium", subject: "", custom: false, date: state.date >= today ? state.date : today, time: "", room: "", note: "" };
+  if (state.sheet) {
+    state.sheet = { kind: "term-form" };
+    render();
+  } else openSheet({ kind: "term-form" });
+}
+
+function myEventTitles(): string[] {
+  const cur = current();
+  return cur ? [...new Set(myEvents(cur.tt, cur.sel).map((e) => e.title))] : [];
+}
+
+function saveTermDraft(): void {
+  const d = state.termDraft;
+  if (!d || !d.date || !d.subject.trim()) return;
+  const term: Term = { id: d.id ?? newTermId(), type: d.type, subject: d.subject.trim(), date: d.date, time: d.time, room: d.room.trim(), note: d.note.trim() };
+  state.terms = d.id ? state.terms.map((t) => (t.id === d.id ? term : t)) : [...state.terms, term];
+  saveTerms(state.terms);
+  state.termDraft = null;
+  closeLayer();
+}
+
+function deleteTerm(id: string): void {
+  if (state.sheet?.kind !== "term") return;
+  if (!state.sheet.armed) {
+    state.sheet = { ...state.sheet, armed: true }; // a second tap deletes
+    render();
+    return;
+  }
+  state.terms = state.terms.filter((t) => t.id !== id);
+  saveTerms(state.terms);
+  closeLayer();
+}
+
+/** The save button follows the form without redrawing it (that would lose the cursor in a field). */
+function updateTermSave(): void {
+  const d = state.termDraft;
+  const button = root.querySelector<HTMLButtonElement>(".tf-save");
+  if (d && button) button.disabled = !(d.date && d.subject.trim());
 }
 
 async function pickTimetable(id: string): Promise<void> {
@@ -503,6 +674,7 @@ function saveGroups(): void {
   saveSelection(state.selection);
   state.view = "plan";
   state.date = openingDate();
+  if (state.tab === "terms") state.tab = wide.matches ? "week" : "day";
   dropLayer(); // the screen's history entry is used up: back from the plan leaves the app, as on any first screen
   render();
 }
@@ -695,8 +867,14 @@ function onClick(ev: MouseEvent): void {
         render();
       }
       break;
-    case "mode":
-      setMode(d.mode as "day" | "week");
+    case "tab":
+      setTab(d.tab as Tab);
+      break;
+    case "prev-day":
+      stepDay(-1);
+      break;
+    case "next-day":
+      stepDay(1);
       break;
     case "prev-week":
       stepWeek(-1);
@@ -705,27 +883,60 @@ function onClick(ev: MouseEvent): void {
       stepWeek(1);
       break;
     case "pick-day":
-      go(d.date!, d.date! > state.date ? "anim-left" : d.date! < state.date ? "anim-right" : "");
+      if (state.tab !== "day") showDay(d.date!);
+      else go(d.date!, d.date! > state.date ? "anim-left" : d.date! < state.date ? "anim-right" : "");
       break;
     case "today":
       go(openingDate(), "anim-fade");
       break;
-    case "show-day":
-      if (!wide.matches) state.mode = "day";
-      go(d.date!, "anim-up");
-      break;
-    case "open-day":
-      if (!wide.matches) {
-        state.mode = "day";
-        go(d.date!, "anim-fade");
-      }
-      break;
     case "goto-day":
       // from the Zmiany page: back to the plan on that day
-      if (!wide.matches) state.mode = "day";
+      state.tab = "day";
+      saveTab("day");
       state.date = d.date!;
       state.anim = "anim-fade";
       closeLayer();
+      break;
+    case "term":
+      openSheet({ kind: "term", id: d.id!, armed: false });
+      break;
+    case "term-new":
+      openTermForm(null);
+      break;
+    case "term-edit": {
+      const t = state.terms.find((x) => x.id === d.id);
+      if (t) openTermForm(t);
+      break;
+    }
+    case "term-delete":
+      deleteTerm(d.id!);
+      break;
+    case "term-save":
+      saveTermDraft();
+      break;
+    case "term-type":
+      if (state.termDraft) state.termDraft.type = d.type as TermType;
+      render();
+      break;
+    case "term-subject":
+      if (state.termDraft) {
+        state.termDraft.custom = !d.subject;
+        state.termDraft.subject = d.subject ?? "";
+      }
+      render();
+      if (!d.subject) root.querySelector<HTMLInputElement>(".tf-custom")?.focus();
+      break;
+    case "term-goto":
+      // from an entry's details: its day in the plan
+      state.tab = "day";
+      saveTab("day");
+      state.date = d.date!;
+      state.anim = "anim-fade";
+      closeLayer();
+      break;
+    case "toggle-past":
+      state.showPast = !state.showPast;
+      render();
       break;
     case "event":
       openSheet({ kind: "event", id: d.id! });
@@ -800,7 +1011,7 @@ function onClick(ev: MouseEvent): void {
       closeLayer();
       break;
     case "clear-data":
-      if (confirm("Usunąć z tego urządzenia wybrane grupy, oznaczenia, notatki i ustawienia?")) {
+      if (confirm("Usunąć z tego urządzenia wybrane grupy, oznaczenia, notatki, terminy i ustawienia?")) {
         clearAllStored();
         location.href = location.pathname;
       }
@@ -829,6 +1040,11 @@ function onChange(ev: Event): void {
 function onInput(ev: Event): void {
   const el = ev.target as HTMLInputElement;
   if (el.dataset.action === "mark-note") updateMark(el.dataset.id!, { note: el.value });
+  const field = el.dataset.field as keyof TermDraft | undefined;
+  if (field && state.termDraft && field in state.termDraft) {
+    (state.termDraft as unknown as Record<string, string>)[field] = el.value;
+    updateTermSave();
+  }
 }
 
 function onKey(ev: KeyboardEvent): void {
@@ -836,22 +1052,37 @@ function onKey(ev: KeyboardEvent): void {
     closeLayer();
     return;
   }
-  if (state.view !== "plan" || state.sheet || (ev.target as HTMLElement).closest("input, textarea")) return;
-  const dayMode = !wide.matches && state.mode === "day";
-  if (ev.key === "ArrowLeft") dayMode ? step(-1) : stepWeek(-1);
-  if (ev.key === "ArrowRight") dayMode ? step(1) : stepWeek(1);
-  if ((ev.key === "Enter" || ev.key === " ") && (ev.target as HTMLElement).classList.contains("nextcard")) {
-    ev.preventDefault();
-    (ev.target as HTMLElement).click();
-  }
+  if (state.view !== "plan" || state.sheet || state.tab === "terms" || (ev.target as HTMLElement).closest("input, textarea")) return;
+  if (ev.key === "ArrowLeft") state.tab === "day" ? stepDay(-1) : stepWeek(-1);
+  if (ev.key === "ArrowRight") state.tab === "day" ? stepDay(1) : stepWeek(1);
 }
 
-// Swipe: left/right on the timeline changes day (or week); up on the "next classes" card opens that day.
-let touch: { x: number; y: number; target: HTMLElement } | null = null;
+// Swipe anywhere on the plan screen: left/right changes the day (or week). The plan follows the finger (a little
+// slower, so it feels elastic); let go early and it bounces back, far enough and the next day slides in.
+const SWIPE_PX = 60;
+let touch: { x: number; y: number; target: HTMLElement; axis: "" | "x" | "y"; el: HTMLElement | null } | null = null;
 
 function onTouchStart(ev: TouchEvent): void {
   const t = ev.touches[0];
-  touch = { x: t.clientX, y: t.clientY, target: ev.target as HTMLElement };
+  const target = ev.target as HTMLElement;
+  const el = target.closest("[data-swipe]") ? root.querySelector<HTMLElement>(".content .day, .content .week") : null;
+  touch = { x: t.clientX, y: t.clientY, target, axis: "", el };
+}
+
+function onTouchMove(ev: TouchEvent): void {
+  if (!touch?.el || state.sheet) return;
+  const t = ev.touches[0];
+  const dx = t.clientX - touch.x;
+  const dy = t.clientY - touch.y;
+  if (!touch.axis) {
+    if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 1.2) touch.axis = "x";
+    else if (Math.abs(dy) > 8) touch.axis = "y";
+  }
+  if (touch.axis !== "x" || reducedMotion.matches) return;
+  // elastic: follows at 45 %, and less the further it goes
+  const pull = Math.sign(dx) * Math.min(Math.abs(dx) * 0.45, 40 + Math.abs(dx) * 0.15);
+  touch.el.style.transition = "none";
+  touch.el.style.transform = `translateX(${pull}px)`;
 }
 
 function onTouchEnd(ev: TouchEvent): void {
@@ -859,16 +1090,24 @@ function onTouchEnd(ev: TouchEvent): void {
   const t = ev.changedTouches[0];
   const dx = t.clientX - touch.x;
   const dy = t.clientY - touch.y;
-  const card = touch.target.closest<HTMLElement>(".nextcard");
   const area = touch.target.closest<HTMLElement>("[data-swipe]");
+  const { el } = touch;
+  // the direction, if the moves didn't settle it (a quick flick can end before a move arrives)
+  const axis = touch.axis || (Math.abs(dx) > Math.abs(dy) * 1.2 ? "x" : "y");
   touch = null;
-  if (card && dy < -40 && Math.abs(dy) > Math.abs(dx)) {
-    card.click();
-    return;
-  }
-  if (area && Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-    if (area.dataset.swipe === "day") step(dx < 0 ? 1 : -1);
-    else stepWeek(dx < 0 ? 1 : -1);
+  if (area && axis === "x" && Math.abs(dx) > SWIPE_PX && Math.abs(dx) > Math.abs(dy) * 1.5) {
+    const direction = dx < 0 ? 1 : -1;
+    const next = () => (area.dataset.swipe === "day" ? stepDay(direction) : stepWeek(direction));
+    if (!el || reducedMotion.matches) return next();
+    // the old day keeps going the way the finger went and fades, then the new one comes in from the other side
+    el.style.transition = "transform .16s ease-in, opacity .16s ease-in";
+    el.style.transform = `translateX(${-direction * 90}px)`;
+    el.style.opacity = "0";
+    setTimeout(next, 150);
+  } else if (el) {
+    // not far enough: back into place with a small overshoot
+    el.style.transition = "transform .42s cubic-bezier(.2, 1.5, .4, 1)";
+    el.style.transform = "";
   }
 }
 
@@ -903,10 +1142,14 @@ async function refresh(): Promise<void> {
 
 export async function start(el: HTMLElement): Promise<void> {
   root = el;
+  pillHost = document.createElement("div");
+  document.body.append(pillHost);
+  pillHost.addEventListener("click", onClick);
   root.addEventListener("click", onClick);
   root.addEventListener("change", onChange);
   root.addEventListener("input", onInput);
   root.addEventListener("touchstart", onTouchStart, { passive: true });
+  root.addEventListener("touchmove", onTouchMove, { passive: true });
   root.addEventListener("touchend", onTouchEnd, { passive: true });
   document.addEventListener("keydown", onKey);
   window.addEventListener("popstate", onPopState);
@@ -919,7 +1162,7 @@ export async function start(el: HTMLElement): Promise<void> {
   });
   wide.addEventListener("change", () => render());
   window.addEventListener("resize", () => {
-    fitDayhead();
+    fitTitle();
     if (fitDay() || fitWeek()) render();
   });
   document.addEventListener("visibilitychange", () => {

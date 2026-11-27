@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { attends, holidayOn, hourRange, myEvents, notesOn, placeDay, selectionComplete, todayState, validTime, weekDays, weekStart, wfPlanned } from "./schedule";
 import { recentChanges } from "./changes";
 import { newsFor } from "./news";
+import { pastTerms, soonCount, sortTerms, termsOn, untilText, upcomingTerms, type Term } from "./terms";
 import { groupsShort, groupsSummary, shortTitle } from "./labels";
 import { addDays, ago, longDate, mondayOf, nowInWarsaw, relativeDay, weekRange, weekday } from "./time";
 import type { ClassEvent, Selection, Timetable } from "./types";
@@ -212,6 +213,35 @@ describe("Co nowego: which notes to show", () => {
     expect(newsFor("0.6.0", "0.6.0")).toBeNull();
     expect(newsFor("0.6.1", "0.6.0", true)?.version).toBe("0.6.0"); // ?nowosci
     expect(newsFor("0.5.0", "0.4.2")).toBeNull(); // nothing that old
+  });
+});
+
+describe("Terminy", () => {
+  const term = (over: Partial<Term>): Term => ({ id: Math.random().toString(36).slice(2), type: "kolokwium", subject: "Chemia", date: "2026-12-03", time: "", room: "", note: "", ...over });
+  const today = "2026-11-25";
+  const list = [
+    term({ id: "late", date: "2027-01-28" }),
+    term({ id: "past", date: "2026-11-18" }),
+    term({ id: "pm", date: "2026-12-03", time: "13:00" }),
+    term({ id: "am", date: "2026-12-03", time: "08:45" }),
+    term({ id: "today", date: today }),
+  ];
+
+  it("sorts by day and time; splits upcoming (from today) and past (newest first)", () => {
+    expect(sortTerms(list).map((t) => t.id)).toEqual(["past", "today", "am", "pm", "late"]);
+    expect(upcomingTerms(list, today).map((t) => t.id)).toEqual(["today", "am", "pm", "late"]);
+    expect(pastTerms([...list, term({ id: "older", date: "2026-11-01" })], today).map((t) => t.id)).toEqual(["past", "older"]);
+    expect(termsOn(list, "2026-12-03").map((t) => t.id)).toEqual(["am", "pm"]);
+  });
+
+  it("says how long is left, and counts the coming week for the badge", () => {
+    expect(untilText(today, today)).toBe("dziś");
+    expect(untilText("2026-11-26", today)).toBe("jutro");
+    expect(untilText("2026-11-27", today)).toBe("pojutrze");
+    expect(untilText("2026-12-03", today)).toBe("za 8 dni");
+    expect(untilText("2026-11-18", today)).toBe("minęło");
+    expect(soonCount(list, today)).toBe(1); // only today's; 03.12 is 8 days away
+    expect(soonCount(list, "2026-11-26")).toBe(2);
   });
 });
 
