@@ -379,6 +379,13 @@ test("week: short names, rooms, the class in progress (Wed 25.11, 12:00)", async
   await expect(now).toContainText("Biochemia");
   await expect(now).toContainText("D3.241");
   await expect(now).toHaveAttribute("aria-label", /^Teraz: Biochemia ogólna i żywności/);
+  // the whole week fits the Redmi's screen: no scrolling (hours shrink a little if needed, not below 32 px)
+  const fit = await page.evaluate(() => ({
+    scrolls: document.documentElement.scrollHeight > window.innerHeight + 1,
+    hour: document.querySelector<HTMLElement>(".week-compact .axis span:nth-child(2)")!.offsetTop,
+  }));
+  expect(fit.scrolls).toBe(false);
+  expect(fit.hour).toBeGreaterThanOrEqual(32);
   await shot(page, "21-week-now");
 });
 

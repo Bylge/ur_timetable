@@ -3,6 +3,16 @@
 Versions follow [Semantic Versioning](https://semver.org/) (see web/README.md, "Versions");
 the format follows [Keep a Changelog](https://keepachangelog.com/). 0.x = demo: anything may still change.
 
+## [0.6.1] - 2026-11-27
+
+### Changed
+- Phone week view fits the screen without scrolling: the week bar and the day headers take less room, and if the
+  week still sticks out a little, the hours get a bit shorter (not below 32 px per hour; beyond that it scrolls).
+
+### Fixed
+- "Co nowego" shows the newest notes the student hasn't seen, also when the current version (a fix) has none of its
+  own: a student who skipped 0.6.0 still gets its notes once.
+
 ## [0.6.0] - 2026-11-23
 
 ### Added

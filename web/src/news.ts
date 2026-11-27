@@ -8,6 +8,29 @@ export interface News {
   more: string[];
 }
 
+/** "0.6.1" -> [0, 6, 1], for comparing versions. */
+function parts(version: string): number[] {
+  return version.split(".").map((n) => Number(n) || 0);
+}
+
+function newer(a: string, b: string): boolean {
+  const [x, y] = [parts(a), parts(b)];
+  for (let i = 0; i < 3; i++) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) > (y[i] ?? 0);
+  return false;
+}
+
+/**
+ * The newest notes up to the current version that the student hasn't seen (seen: the version stored at their last
+ * visit, null if none). A fix release without notes still shows the last feature release's notes to a student who
+ * skipped it. `any`: ignore what was seen (for `?nowosci`).
+ */
+export function newsFor(current: string, seen: string | null, any = false): { version: string; news: News } | null {
+  const version = Object.keys(NEWS)
+    .filter((v) => !newer(v, current) && (any || seen === null || newer(v, seen)))
+    .sort((a, b) => (newer(a, b) ? -1 : 1))[0];
+  return version ? { version, news: NEWS[version] } : null;
+}
+
 export const NEWS: Record<string, News> = {
   "0.6.0": {
     date: "23 listopada",

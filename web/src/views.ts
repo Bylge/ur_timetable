@@ -326,6 +326,7 @@ export interface PlanContext {
   marks: Record<string, Mark>;
   unseen: { count: number; updated: string | null } | null; // changes in the student's classes since the last visit
   changed: Map<string, RecentChange>; // classes added or changed in recent updates (marked in the plan)
+  weekHourPx: number; // phone week grid: height of an hour, shrunk a little when that avoids scrolling (app.ts)
   fillHours: number; // day view: empty hours added after the last class so the timeline fills the screen (measured in app.ts)
   offline: boolean;
   canInstall: boolean;
@@ -381,6 +382,9 @@ function dayTitle(date: string): string {
 
 /** Height of an hour in the day view (app.ts uses it to fill the screen). */
 export const DAY_HOUR_PX = 52;
+/** Phone week grid: usual height of an hour, and the least it may shrink to so the week fits without scrolling. */
+export const WEEK_HOUR_PX = 40;
+export const WEEK_MIN_HOUR_PX = 32;
 
 /** Today, one line: the class going on now, or the next one today. Tapping it opens the class. */
 function nowNext(c: PlanContext): string {
@@ -450,7 +454,7 @@ function dayTabs(c: PlanContext): string {
 
 function weekGrid(c: PlanContext, compact: boolean): string {
   const days = weekDays(c.date, c.withWeekend);
-  const o: AxisOptions = { ...c.hours, hourPx: compact ? 40 : 52, compact, now: c.now, marks: c.marks, changed: c.changed };
+  const o: AxisOptions = { ...c.hours, hourPx: compact ? c.weekHourPx : 52, compact, now: c.now, marks: c.marks, changed: c.changed };
   const heads = days
     .map((d) => {
       const isToday = d === c.now.date;
@@ -489,7 +493,7 @@ export function phonePlan(c: PlanContext, mode: "day" | "week"): string {
       : `<nav class="weekbar"><button class="iconbtn" data-action="prev-week" aria-label="Poprzedni tydzień">${ICON.left}</button>
           <div class="weeklabel">${esc(weekRange(monday, days))}${tag ? ` · <span class="rel-today">${tag}</span>` : ""}</div>
           <button class="iconbtn" data-action="next-week" aria-label="Następny tydzień">${ICON.right}</button></nav>`;
-  return `<div class="app phone">
+  return `<div class="app phone mode-${mode}">
     <header class="topbar">${brand(false, true)}
       <div class="seg seg-mode" role="group" aria-label="Widok">
         <button class="seg-btn${mode === "day" ? " on" : ""}" data-action="mode" data-mode="day" aria-pressed="${mode === "day"}">Dzień</button>

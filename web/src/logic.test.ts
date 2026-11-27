@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { attends, holidayOn, hourRange, myEvents, notesOn, placeDay, selectionComplete, todayState, validTime, weekDays, weekStart, wfPlanned } from "./schedule";
 import { recentChanges } from "./changes";
+import { newsFor } from "./news";
 import { groupsShort, groupsSummary, shortTitle } from "./labels";
 import { addDays, ago, longDate, mondayOf, nowInWarsaw, relativeDay, weekRange, weekday } from "./time";
 import type { ClassEvent, Selection, Timetable } from "./types";
@@ -201,6 +202,16 @@ describe("short subject names for the week columns", () => {
       "spotkanie organizacyjne": "Spotkanie",
     };
     for (const [title, short] of Object.entries(names)) expect(shortTitle(title)).toBe(short);
+  });
+});
+
+describe("Co nowego: which notes to show", () => {
+  it("shows the newest unseen notes, also after a fix release without its own", () => {
+    expect(newsFor("0.6.1", "0.5.0")?.version).toBe("0.6.0"); // skipped 0.6.0: still sees its notes
+    expect(newsFor("0.6.1", "0.6.0")).toBeNull(); // saw them already
+    expect(newsFor("0.6.0", "0.6.0")).toBeNull();
+    expect(newsFor("0.6.1", "0.6.0", true)?.version).toBe("0.6.0"); // ?nowosci
+    expect(newsFor("0.5.0", "0.4.2")).toBeNull(); // nothing that old
   });
 });
 

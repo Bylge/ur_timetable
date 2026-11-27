@@ -29,7 +29,7 @@ import {
 } from "./data";
 import { endAfter, hasWeekendClasses, hourRange, myEvents, selectionComplete, validTime, weekStart, wfPlanned } from "./schedule";
 import { cachedQr, qrPng, qrSvg } from "./qr";
-import { NEWS } from "./news";
+import { newsFor, type News } from "./news";
 import { VERSION } from "./version";
 import { myChangeCount, recentChanges, unseenChanges } from "./changes";
 import { download, icsFileName, toIcs } from "./ics";
@@ -54,6 +54,8 @@ import {
   privacyView,
   newsPopup,
   DAY_HOUR_PX,
+  WEEK_HOUR_PX,
+  WEEK_MIN_HOUR_PX,
   shareSheet,
   SITE_URL,
   type PlanContext,
@@ -69,7 +71,7 @@ type Sheet =
   | { kind: "ics"; count: number; file: string }
   | { kind: "ios-install" }
   | { kind: "share"; withGroups: boolean }
-  | { kind: "news" }
+  | { kind: "news"; version: string; news: News }
   | null;
 
 const PAGE_HASH: Record<Page, string> = { changes: "zmiany", about: "o-projekcie", privacy: "prywatnosc" };
@@ -110,7 +112,8 @@ const state = {
   leaving: false, // a sheet is animating out
   loadedAt: Date.now(),
   openedOn: "", // "today" when the plan was opened, to follow the date if the app stays open overnight
-  fill: { key: "", hours: 0 }, // day view: empty hours that fill the screen below a short day (see fitDay)
+  fill: { key: "", hours: 0 },
+  weekFit: { key: 0, px: 0 }, // phone week grid: hour height that fits the screen (see fitWeek) // day view: empty hours that fill the screen below a short day (see fitDay)
 };
 
 // The skeleton from index.html, shown until the data is ready.
@@ -233,6 +236,7 @@ function render(): void {
       offline: !navigator.onLine,
       canInstall: Boolean(state.install) || (ios && !installed),
       theme: state.theme,
+      weekHourPx: state.weekFit.key === window.innerHeight ? state.weekFit.px : WEEK_HOUR_PX,
       fillHours: state.fill.key === fillKey() ? state.fill.hours : 0,
     };
     html = wide.matches ? desktopPlan(c) : phonePlan(c, state.mode);
@@ -247,7 +251,7 @@ function render(): void {
     else if (s?.kind === "ics") html += icsSheet(s.count, s.file);
     else if (s?.kind === "ios-install") html += iosInstallSheet();
     else if (s?.kind === "share") html += renderShare(s.withGroups);
-    else if (s?.kind === "news" && NEWS[VERSION]) html += newsPopup(VERSION, NEWS[VERSION]);
+    else if (s?.kind === "news") html += newsPopup(s.version, s.news);
   }
   root.innerHTML = html;
   state.anim = "";
@@ -256,7 +260,7 @@ function render(): void {
   document.documentElement.classList.toggle("sheet-open", Boolean(state.sheet));
   fitDayhead();
   root.querySelector<HTMLElement>(".sheet, .news-card")?.focus();
-  if (fitDay()) {
+  if (fitDay() || fitWeek()) {
     state.anim = anim; // the second pass replaces the first before it's painted: keep its transition
     render();
   }
@@ -286,6 +290,27 @@ function fitDay(): boolean {
   const changed = state.fill.key !== key || hours !== current;
   state.fill = { key, hours };
   return changed && hours !== current;
+}
+
+/**
+ * Phone week grid: if the week sticks out below the bottom bar by a little, make the hours a bit shorter so it
+ * fits (down to WEEK_MIN_HOUR_PX; beyond that it scrolls as before). If there's room again, back towards the
+ * usual height. Returns true when the height changed and the view needs drawing again.
+ */
+function fitWeek(): boolean {
+  const body = root.querySelector<HTMLElement>(".week-compact .wk-body");
+  const axis = body?.querySelector<HTMLElement>(".axis");
+  const bar = root.querySelector<HTMLElement>(".bottombar");
+  if (!body || !axis || !bar || state.view !== "plan" || state.mode !== "week" || wide.matches) return false;
+  const key = window.innerHeight;
+  const current = state.weekFit.key === key ? state.weekFit.px : WEEK_HOUR_PX;
+  const hours = Math.round(axis.offsetHeight / current);
+  const bottom = body.getBoundingClientRect().bottom + window.scrollY;
+  const free = window.innerHeight - bar.offsetHeight - bottom; // < 0: it scrolls
+  const wanted = Math.floor(current + free / hours);
+  const px = Math.max(WEEK_MIN_HOUR_PX, Math.min(WEEK_HOUR_PX, wanted));
+  state.weekFit = { key, px };
+  return px !== current;
 }
 
 /** The day header stays on one line: if "Poniedziałek, 26 października · za 5 dni · Dziś" wraps, use "Pon.". */
@@ -627,8 +652,9 @@ function showNews(returning: boolean): void {
   const forced = new URLSearchParams(location.search).has("nowosci");
   const seen = loadSeenVersion();
   saveSeenVersion(VERSION);
-  if (!NEWS[VERSION] || state.view !== "plan") return;
-  if (forced || (returning && seen !== VERSION)) openSheet({ kind: "news" });
+  if (state.view !== "plan" || !(forced || returning)) return;
+  const found = newsFor(VERSION, seen, forced);
+  if (found) openSheet({ kind: "news", ...found });
 }
 
 function fail(err: unknown): void {
@@ -894,7 +920,7 @@ export async function start(el: HTMLElement): Promise<void> {
   wide.addEventListener("change", () => render());
   window.addEventListener("resize", () => {
     fitDayhead();
-    if (fitDay()) render();
+    if (fitDay() || fitWeek()) render();
   });
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden && Date.now() - state.loadedAt > REFRESH_AFTER_MS) void refresh();

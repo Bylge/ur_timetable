@@ -104,6 +104,10 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 /* ---------- phone plan ---------- */
 .app.phone { min-height: 100dvh; padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
 .app.phone { --top-h: 54px; --week-h: 56px; }
+/* week view: the bar holds only the week's dates, so it can be lower (and the grid fit without scrolling) */
+.app.phone.mode-week { --week-h: 46px; }
+.app.phone.mode-week .weekbar { padding-bottom: 2px; }
+.app.phone.mode-week .content { padding-top: 6px; }
 .topbar {
   position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 6px;
   height: var(--top-h); padding: 0 6px 0 14px; background: var(--bg);
@@ -232,9 +236,9 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .wk-head.today .wk-day, .wk-head.today .wk-date { color: var(--accent); }
 .wk-head .daynote { font-size: 12px; padding: 4px 8px; margin: 4px 0 0; }
 .week-compact .wk-heads { top: calc(var(--top-h) + var(--week-h)); }
-.week-compact .wk-head { justify-items: center; padding: 6px 0; cursor: pointer; }
+.week-compact .wk-head { justify-items: center; padding: 2px 0 4px; cursor: pointer; line-height: 1.2; }
 .week-compact .wk-day { font-size: 11.5px; color: var(--muted); text-transform: uppercase; }
-.week-compact .wk-date { font-size: 16px; font-weight: 650; color: var(--text); }
+.week-compact .wk-date { font-size: 15px; font-weight: 650; color: var(--text); }
 .week-compact .wk-head.today .wk-date, .week-compact .wk-head.today .wk-day { color: var(--accent); }
 .week-compact .timeline, .week-compact .wk-body { grid-template-columns: 34px repeat(var(--days), 1fr); }
 .week-compact .wk-heads { grid-template-columns: 34px repeat(var(--days), 1fr); }
